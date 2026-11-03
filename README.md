@@ -16,16 +16,27 @@ Abra `http://localhost:3000`. Para outra porta, use `PORT=4000 npm start`.
 
 Se você já tem o projeto, atualize com `git pull origin main` e reinicie o servidor.
 
+## Dois espaços para criar
+
+- **Explorar estilos:** comece com uma das oito composições prontas e personalize cada detalhe.
+- **Criar do zero:** comece com um fundo sólido, sem textos, formas, imagem ou textura predefinidos. Escolha cores, crie formas, importe sua imagem e adicione seus textos.
+
+As abas acima do editor guardam rascunhos independentes durante a sessão. Alternar entre elas não apaga a outra criação, e cada espaço mantém seu próprio histórico. “Limpar tela” no espaço livre pode ser desfeito. Use “Salvar projeto” antes de fechar o navegador para persistir os dois rascunhos.
+
+A página inicial tem uma identidade visual com roxo, rosa e verde vibrantes e uma colagem vetorial própria, sem dependências externas.
+
 ## Ferramentas de edição
 
-O painel de edição é organizado em quatro abas:
+O painel de edição é organizado em seis abas:
 
 - **Tela:** resolução do monitor, formato do download e qualidade do arquivo.
-- **Cores:** paletas identificadas pelo nome e seletores para cada cor da arte.
+- **Cores:** paletas, cores livres, fundos sólidos e gradientes lineares ou radiais com direção ajustável.
 - **Textos:** escolha do texto, criação e exclusão de camadas, conteúdo, fonte, estilo e posição.
-- **Efeitos:** textura granulada e intensidade dos elementos.
+- **Elementos:** formas geométricas com tamanho, cor, contorno, sombra, posição, rotação e opacidade.
+- **Imagem:** foto ou arte local como fundo, com enquadramento, zoom e opacidade.
+- **Efeitos:** textura granulada com intensidade ajustável, intensidade da arte dos estilos, padrões de grade/pontos/listras, escurecimento das bordas e moldura.
 
-Cada grupo traz rótulos visíveis e explicações. A aba Textos abre inicialmente; ao selecionar um texto pela prévia, ela é aberta automaticamente. As abas também podem ser percorridas com as setas do teclado, Home e End.
+Cada grupo traz rótulos visíveis e explicações. A aba Textos abre inicialmente; o espaço livre abre em Cores. Selecionar um texto ou uma forma na prévia abre suas ferramentas automaticamente. As abas também podem ser percorridas com as setas do teclado, Home e End.
 
 No computador, apenas o conteúdo da categoria escolhida rola dentro do painel; a navegação e o botão de download permanecem disponíveis em áreas separadas. Em telas menores, as ferramentas ficam abaixo da prévia, com rolagem natural da página. A biblioteca de estilos passa a ser uma galeria horizontal. O tema acompanha a preferência clara ou escura do sistema.
 
@@ -42,16 +53,27 @@ Trocar o estilo, a paleta ou usar “Surpreenda-me” preserva seus textos e a f
 
 A composição inicial contém um título, uma etiqueta superior e uma frase no rodapé. **Todos esses textos são editáveis e removíveis.**
 
-Use o seletor em “Textos e tipografia” para editar uma camada. O botão **+** adiciona um texto; “Duplicar” copia a camada selecionada com um pequeno deslocamento. Há suporte a até **8 textos**, com até **300 caracteres** cada, incluindo quebras de linha. É possível remover uma camada, remover todas ou ocultar um texto sem apagá-lo.
+Use o seletor na aba “Textos” para editar uma camada. O botão **Adicionar texto** cria uma camada; “Duplicar” copia a camada selecionada com um pequeno deslocamento. Há suporte a até **8 textos**, com até **300 caracteres** cada, incluindo quebras de linha. É possível remover uma camada, remover todas ou ocultar um texto sem apagá-lo.
 
 Cada camada tem:
 
 - 8 opções de fonte: Arial, Georgia, Courier New, Trebuchet MS, Times New Roman, Verdana, Impact e Cursiva.
-- Cor, tamanho, negrito, itálico, sombra e alinhamento próprios.
+- Cor, tamanho, negrito, itálico, sombra, contorno, espaçamento entre linhas e alinhamento próprios.
 - Posição horizontal e vertical, rotação e opacidade.
+- Ordem de sobreposição entre textos com “Recuar” e “Avançar”.
 - Posicionamento por arraste na prévia, inclusive por toque. Em sobreposições, a camada escolhida no seletor tem prioridade no arraste.
 
 As fontes são locais, com alternativas de sistema: a aparência pode variar conforme as fontes instaladas. A renderização reduz textos muito grandes ou longos para mantê-los dentro da tela. O tamanho indicado é a referência em uma tela com altura de 1080 pixels; acompanha proporcionalmente a resolução exportada.
+
+## Formas e imagens
+
+Adicione até **24 formas**, entre círculo/elipse, retângulo, forma arredondada, triângulo, estrela e anel. Cada uma pode ser duplicada, ocultada, excluída, arrastada e reordenada entre as formas. Há controles de largura, altura, preenchimento, contorno e espessura, sombra, posição, rotação e opacidade.
+
+As imagens importadas ficam sobre a arte original e atrás das formas e dos textos. Os padrões e o acabamento do fundo também aparecem sobre a imagem. As formas ficam atrás dos textos; os controles de ordem operam dentro de cada grupo.
+
+A aba Imagem aceita **PNG, JPEG e WebP de até 10 MB e 30 megapixels**. A importação é processada localmente, sem envio a um servidor. Para manter a edição e o salvamento leves, a imagem é reduzida para no máximo 2560 pixels no maior lado e convertida em WebP (ou PNG, se necessário), com limite de 4 MB codificados. Imagens com transparência continuam transparentes. A resolução final do wallpaper segue o formato de exportação escolhido; fotos de baixa resolução não ganham detalhes ao exportar em 4K.
+
+Use “Preencher a tela” para cobrir o fundo com recorte, ou “Mostrar imagem inteira” para preservar o enquadramento. Zoom, alinhamento e opacidade permitem combinar a imagem com a arte. Remover a imagem pode ser desfeito.
 
 ## Formatos e exportação
 
@@ -76,7 +98,13 @@ Exporte em **PNG**, **JPEG** ou **WebP**. JPEG e WebP têm controle de qualidade
 
 “Desfazer” e “Refazer” funcionam para cores, estilos, textos, exclusões, arrastes e demais edições. Uma digitação contínua ou um arraste ocupa uma única etapa no histórico, limitado às últimas 60 edições.
 
-`Ctrl/Cmd+Z` desfaz fora dos campos de texto; `Ctrl/Cmd+Shift+Z` refaz. “Salvar projeto” mantém um único projeto no armazenamento local desse navegador, recuperado na próxima visita. Projetos salvos na versão original são migrados automaticamente. Projetos salvos sem textos continuam sem textos ao reabrir.
+`Ctrl/Cmd+Z` desfaz fora dos campos de texto; `Ctrl/Cmd+Shift+Z` refaz. “Salvar projeto” guarda os dois espaços no armazenamento local desse navegador e recupera a aba ativa na próxima visita. O histórico de desfazer/refazer existe apenas durante a sessão. Projetos salvos na versão original são migrados automaticamente. Projetos salvos sem textos continuam sem textos ao reabrir.
+
+### Arquivos de projeto
+
+“Baixar projeto” exporta a criação ativa em `.wallultra.json`, incluindo textos, formas, efeitos e imagem. “Abrir projeto” permite continuar a criação em outro navegador ou computador; arquivos de até 8 MB são aceitos. A importação usa o espaço correspondente (livre ou estilos), preserva o outro rascunho e pode ser desfeita.
+
+O armazenamento do navegador tem limites. Se ele estiver cheio ou bloqueado, o app avisa para usar “Baixar projeto”; não há sincronização automática com uma conta.
 
 ## Validação
 
@@ -84,8 +112,8 @@ Exporte em **PNG**, **JPEG** ou **WebP**. JPEG e WebP têm controle de qualidade
 npm test
 ```
 
-Os testes do Node verificam persistência, migração, recuperação de dados inválidos, limites de camadas e ajuste de textos rotacionados em todos os formatos. A interface também foi verificada no Chromium com edição, arraste, histórico, exclusão, salvamento, migração, exportação e layouts em diferentes larguras.
+Os testes do Node verificam criação livre, independência dos rascunhos, arquivos de projeto, persistência, migração, recuperação de dados inválidos, ordem e limites das camadas e ajuste de textos e formas rotacionados. A interface também foi verificada no Chromium com edição, arraste, histórico, exclusão, salvamento, migração, imagens locais, importação/exportação de projetos, verificação dos pixels da imagem exportada e layouts em diferentes larguras.
 
 ## Escopo
 
-Funciona inteiramente no navegador, sem contas, sincronização entre dispositivos, upload de imagens ou geração por IA. As composições são desenhadas proceduralmente, sem imagens, fontes remotas ou serviços pagos. Não há necessidade de credenciais.
+Funciona inteiramente no navegador, sem contas, sincronização em nuvem ou geração por IA. Há importação local de imagens e transferência de projetos por arquivo. As composições prontas são desenhadas proceduralmente, sem imagens externas, fontes remotas ou serviços pagos. Não há necessidade de credenciais.

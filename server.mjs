@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const root = fileURLToPath(new URL('.', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml' };
-const files = new Set(['index.html', 'styles.css', 'app.js', 'wallpaper.js']);
+const files = new Set(['index.html', 'styles.css', 'app.js', 'wallpaper.js', 'project.js']);
 http.createServer(async (req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (!files.has(name)) { res.writeHead(404); res.end('Não encontrado'); return; }

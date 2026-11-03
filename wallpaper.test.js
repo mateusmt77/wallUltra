@@ -17,7 +17,7 @@ test('migra os projetos do protótipo original preservando texto, fonte e visibi
   assert.equal(s.texts[0].font, 'serif'); assert.equal(s.texts[0].visible, false);
   assert.equal(s.texts[0].align, 'right'); assert.equal(s.texts[0].x, 75);
   assert.equal(s.background, '#202d2b'); assert.equal(s.name, 'Antigo');
-  assert.equal(s.resolution, '3840x2160'); assert.equal(s.version, 2);
+  assert.equal(s.resolution, '3840x2160'); assert.equal(s.version, 3);
 });
 test('projetos sem textos continuam sem textos ao recarregar', () => {
   assert.deepEqual(validateState({ texts: [] }).texts, []);
