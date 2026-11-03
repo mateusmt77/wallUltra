@@ -1,0 +1,13 @@
+{
+  "name": "wallultra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Estúdio de wallpapers personalizados para desktop",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f5f4f0"><title>WallUltra — Seu espaço, do seu jeito</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./" aria-label="WallUltra, início"><span class="brand-mark">w<span>✦</span></span>wallultra<span class="beta">BETA</span></a>
+  <div class="top-center"><span class="live-dot"></span> Um espaço para criar o seu espaço.</div>
+  <button id="save" class="button subtle"><span aria-hidden="true">▣</span> Salvar projeto</button>
+</header>
+<main>
+  <section class="intro"><div><div class="eyebrow">SEU DESKTOP. SUA IDENTIDADE.</div><h1>Um wallpaper que é <em>você.</em><span class="spark">✳</span></h1><p>Explore, misture, crie. Transforme sua tela em um lugar seu.</p></div><div class="intro-note"><span>✧</span> Um pouco de inspiração.<br>Infinitas possibilidades.</div></section>
+  <section class="studio" aria-label="Editor de wallpaper">
+    <div class="studio-bar"><div class="project-title"><span class="small-logo">◈</span><input id="project-name" aria-label="Nome do projeto" value="Meu novo universo" maxlength="60"><span class="draft" id="save-status">RASCUNHO</span></div><div class="studio-actions"><span class="desktop-label">▱ &nbsp; Wallpaper para desktop</span><span class="separator"></span><button class="icon-button" id="undo" title="Desfazer" aria-label="Desfazer">↶</button><button class="icon-button" id="redo" title="Refazer" aria-label="Refazer">↷</button></div></div>
+    <div class="editor-grid">
+      <aside class="templates-panel"><div class="panel-heading"><h2>Comece com uma ideia</h2><span>01</span></div><p class="panel-description">Um ponto de partida. O resto é seu.</p><div id="templates" class="template-list"></div><div class="tip"><span>✦</span><p><strong>Não existem regras.</strong><br>Escolha um estilo e dê o seu toque em cada detalhe.</p></div></aside>
+      <section class="workspace" aria-label="Prévia do wallpaper"><div class="workspace-top"><span><span class="live-dot"></span> PRÉVIA AO VIVO</span><span id="canvas-dimensions">1920 × 1080 px</span></div><div class="canvas-wrap"><canvas id="wallpaper" width="1920" height="1080" role="img" aria-label="Prévia do wallpaper personalizado"></canvas></div><div class="canvas-meta"><span>▱ &nbsp; <span id="resolution-label">Full HD</span></span><span id="aspect-label">16:9</span><span>✧ &nbsp; Feito por você</span></div><div class="workspace-bottom"><span class="keyboard-tip"><kbd>Ctrl</kbd> + <kbd>Z</kbd> para desfazer</span><button id="shuffle" class="button shuffle"><span aria-hidden="true">⤨</span> Surpreenda-me</button></div></section>
+      <aside class="settings-panel"><div class="panel-heading"><h2>Do seu jeito</h2><span>02</span></div><p class="panel-description">Os detalhes fazem a diferença.</p>
+        <div class="setting-group"><label class="field-label" for="resolution">TAMANHO DA TELA</label><select id="resolution"><option value="1920x1080">Full HD · 1920 × 1080</option><option value="2560x1440">Quad HD · 2560 × 1440</option><option value="3840x2160">4K Ultra HD · 3840 × 2160</option><option value="2560x1080">Ultrawide · 2560 × 1080</option></select></div>
+        <div class="setting-group"><div class="field-label">PALETA DE CORES</div><div id="palettes" class="palettes" role="group" aria-label="Paletas de cores"></div><label class="custom-color"><span>Cor de destaque</span><span class="color-picker-wrap"><input type="color" id="accent" value="#b8a0ed" aria-label="Cor de destaque"><span id="hex-label">#B8A0ED</span></span></label></div>
+        <div class="setting-group"><div class="setting-line"><label class="field-label" for="show-text">UM TOQUE DE PALAVRAS</label><input class="switch" type="checkbox" id="show-text" checked></div><label class="sr-only" for="headline">Texto do wallpaper</label><textarea id="headline" rows="2" maxlength="90" placeholder="Sua frase, sua inspiração…">MAKE
+SPACE.</textarea><div class="text-options"><select id="font" aria-label="Estilo da fonte"><option value="sans">Grotesca</option><option value="serif">Editorial</option><option value="mono">Monoespaçada</option></select><div class="alignment" role="group" aria-label="Alinhamento do texto"><button data-align="left" class="active" aria-label="Alinhar à esquerda" aria-pressed="true">☰</button><button data-align="center" aria-label="Centralizar" aria-pressed="false">≡</button><button data-align="right" aria-label="Alinhar à direita" aria-pressed="false">☰</button></div></div></div>
+        <div class="setting-group details"><div class="setting-line"><label class="field-label" for="grain">TEXTURA GRANULADA</label><input class="switch" type="checkbox" id="grain" checked></div><div class="setting-line"><label class="field-label" for="intensity">INTENSIDADE DOS ELEMENTOS</label><output id="intensity-value" for="intensity">70%</output></div><input type="range" id="intensity" min="0" max="100" value="70"></div>
+        <button class="button export" id="download"><span aria-hidden="true">↓</span> Baixar wallpaper <span class="file-type">PNG</span></button><p class="export-note">Sem marca d’água. Pronto para sua tela.</p>
+      </aside>
+    </div>
+  </section>
+  <footer><span>CRIADO COM LIBERDADE. FEITO PARA VOCÊ.</span><span>Seu próximo recomeço pode estar na sua tela. <span class="footer-star">✳</span></span><span>WALLULTRA STUDIO / 01</span></footer>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="app.js"></script>
+</body></html>
