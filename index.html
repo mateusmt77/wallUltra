@@ -12,19 +12,55 @@
   <section class="studio" aria-label="Editor de wallpaper">
     <div class="studio-bar"><div class="project-title"><span class="small-logo">◈</span><input id="project-name" aria-label="Nome do projeto" value="Meu novo universo" maxlength="60"><span class="draft" id="save-status">RASCUNHO</span></div><div class="studio-actions"><span class="desktop-label">▱ &nbsp; Wallpaper para desktop</span><span class="separator"></span><button class="icon-button" id="undo" title="Desfazer" aria-label="Desfazer">↶</button><button class="icon-button" id="redo" title="Refazer" aria-label="Refazer">↷</button></div></div>
     <div class="editor-grid">
-      <aside class="templates-panel"><div class="panel-heading"><h2>Comece com uma ideia</h2><span>01</span></div><p class="panel-description">Um ponto de partida. O resto é seu.</p><div id="templates" class="template-list"></div><div class="tip"><span>✦</span><p><strong>Não existem regras.</strong><br>Escolha um estilo e dê o seu toque em cada detalhe.</p></div></aside>
-      <section class="workspace" aria-label="Prévia do wallpaper"><div class="workspace-top"><span><span class="live-dot"></span> PRÉVIA AO VIVO</span><span id="canvas-dimensions">1920 × 1080 px</span></div><div class="canvas-wrap"><canvas id="wallpaper" width="1920" height="1080" role="img" aria-label="Prévia do wallpaper personalizado"></canvas></div><div class="canvas-meta"><span>▱ &nbsp; <span id="resolution-label">Full HD</span></span><span id="aspect-label">16:9</span><span>✧ &nbsp; Feito por você</span></div><div class="workspace-bottom"><span class="keyboard-tip"><kbd>Ctrl</kbd> + <kbd>Z</kbd> para desfazer</span><button id="shuffle" class="button shuffle"><span aria-hidden="true">⤨</span> Surpreenda-me</button></div></section>
-      <aside class="settings-panel"><div class="panel-heading"><h2>Do seu jeito</h2><span>02</span></div><p class="panel-description">Os detalhes fazem a diferença.</p>
-        <div class="setting-group"><label class="field-label" for="resolution">TAMANHO DA TELA</label><select id="resolution"><option value="1920x1080">Full HD · 1920 × 1080</option><option value="2560x1440">Quad HD · 2560 × 1440</option><option value="3840x2160">4K Ultra HD · 3840 × 2160</option><option value="2560x1080">Ultrawide · 2560 × 1080</option></select></div>
-        <div class="setting-group"><div class="field-label">PALETA DE CORES</div><div id="palettes" class="palettes" role="group" aria-label="Paletas de cores"></div><label class="custom-color"><span>Cor de destaque</span><span class="color-picker-wrap"><input type="color" id="accent" value="#b8a0ed" aria-label="Cor de destaque"><span id="hex-label">#B8A0ED</span></span></label></div>
-        <div class="setting-group"><div class="setting-line"><label class="field-label" for="show-text">UM TOQUE DE PALAVRAS</label><input class="switch" type="checkbox" id="show-text" checked></div><label class="sr-only" for="headline">Texto do wallpaper</label><textarea id="headline" rows="2" maxlength="90" placeholder="Sua frase, sua inspiração…">MAKE
-SPACE.</textarea><div class="text-options"><select id="font" aria-label="Estilo da fonte"><option value="sans">Grotesca</option><option value="serif">Editorial</option><option value="mono">Monoespaçada</option></select><div class="alignment" role="group" aria-label="Alinhamento do texto"><button data-align="left" class="active" aria-label="Alinhar à esquerda" aria-pressed="true">☰</button><button data-align="center" aria-label="Centralizar" aria-pressed="false">≡</button><button data-align="right" aria-label="Alinhar à direita" aria-pressed="false">☰</button></div></div></div>
-        <div class="setting-group details"><div class="setting-line"><label class="field-label" for="grain">TEXTURA GRANULADA</label><input class="switch" type="checkbox" id="grain" checked></div><div class="setting-line"><label class="field-label" for="intensity">INTENSIDADE DOS ELEMENTOS</label><output id="intensity-value" for="intensity">70%</output></div><input type="range" id="intensity" min="0" max="100" value="70"></div>
-        <button class="button export" id="download"><span aria-hidden="true">↓</span> Baixar wallpaper <span class="file-type">PNG</span></button><p class="export-note">Sem marca d’água. Pronto para sua tela.</p>
+      <aside class="templates-panel"><div class="panel-heading"><h2>Comece com uma ideia</h2><span>01</span></div><p class="panel-description">Um ponto de partida. O resto é seu.</p><div id="templates" class="template-list"></div><div class="tip"><span>✦</span><p><strong>Não existem regras.</strong><br>Troque de estilo sem perder seus textos. Dê o seu toque em cada detalhe.</p></div></aside>
+      <section class="workspace" aria-label="Prévia do wallpaper"><div class="workspace-top"><span><span class="live-dot"></span> PRÉVIA AO VIVO</span><span id="canvas-dimensions">1920 × 1080 px</span></div><div class="canvas-wrap"><canvas id="wallpaper" width="1920" height="1080" role="img" aria-label="Prévia do wallpaper personalizado"></canvas></div><div class="canvas-meta"><span>▱ &nbsp; <span id="resolution-label">Full HD</span></span><span id="aspect-label">16:9</span><span id="selection-hint">Arraste os textos para posicionar</span></div><div class="workspace-bottom"><span class="keyboard-tip"><kbd>Ctrl</kbd> + <kbd>Z</kbd> para desfazer</span><button id="shuffle" class="button shuffle"><span aria-hidden="true">⤨</span> Surpreenda-me</button></div></section>
+      <aside class="settings-panel">
+        <div class="panel-heading"><h2>Do seu jeito</h2><span>02</span></div>
+        <p class="panel-description">Mais possibilidades. A mesma liberdade.</p>
+        <details class="control-section" open>
+          <summary>Formato da tela <span>01</span></summary>
+          <div class="section-content"><label class="field-label" for="resolution">RESOLUÇÃO E PROPORÇÃO</label><select id="resolution"></select><p class="control-hint">Do monitor clássico ao setup com duas telas.</p>
+          <label class="field-label export-format-label" for="export-format">FORMATO DO ARQUIVO</label><select id="export-format"><option value="png">PNG · máxima fidelidade</option><option value="jpeg">JPEG · arquivo mais leve</option><option value="webp">WebP · compressão moderna</option></select><div id="quality-control" class="range-field" hidden><div class="setting-line"><label for="export-quality">Qualidade</label><output id="export-quality-value" for="export-quality">92%</output></div><input id="export-quality" type="range" min="10" max="100"></div></div>
+        </details>
+        <details class="control-section" open>
+          <summary>Cores da composição <span>02</span></summary>
+          <div class="section-content"><div id="palettes" class="palettes" role="group" aria-label="Paletas de cores"></div>
+          <div class="color-grid">
+            <label class="color-field"><input type="color" id="background" aria-label="Cor do fundo"><span>Fundo</span></label>
+            <label class="color-field"><input type="color" id="accent" aria-label="Cor de destaque"><span>Destaque</span></label>
+            <label class="color-field"><input type="color" id="secondary" aria-label="Cor secundária"><span>Secundária</span></label>
+            <label class="color-field"><input type="color" id="highlight" aria-label="Cor de luz"><span>Luz</span></label>
+          </div><p class="control-hint" id="palette-name">Lavanda · personalize cada cor</p></div>
+        </details>
+        <details class="control-section" open>
+          <summary>Textos e tipografia <span>03</span></summary>
+          <div class="section-content">
+            <div class="layer-toolbar"><label class="sr-only" for="text-layer">Texto selecionado</label><select id="text-layer"></select><button id="add-text" class="small-button" title="Adicionar texto" aria-label="Adicionar texto">+</button></div>
+            <div class="layer-actions"><button id="duplicate-text" class="text-button">Duplicar</button><button id="remove-text" class="text-button danger">Remover texto</button><button id="remove-all-texts" class="text-button danger">Remover todos</button></div>
+            <p id="empty-texts" class="empty-state" hidden>Sua composição, sem palavras.<br>Use + para adicionar um texto.</p>
+            <fieldset id="text-controls">
+              <legend class="sr-only">Editar o texto selecionado</legend>
+              <div class="setting-line"><label class="field-label" for="show-text">EXIBIR ESTE TEXTO</label><input class="switch" type="checkbox" id="show-text"></div>
+              <label class="sr-only" for="headline">Conteúdo do texto selecionado</label><textarea id="headline" rows="3" maxlength="300" placeholder="Sua frase, sua inspiração…"></textarea>
+              <div class="text-counter"><span>Quebre linhas com Enter</span><span id="text-count">0/300</span></div>
+              <label class="sr-only" for="font">Fonte do texto</label><select id="font"></select>
+              <p class="control-hint font-note">Fontes locais; a aparência pode variar conforme o sistema.</p>
+              <div class="typography-toolbar"><div class="alignment" role="group" aria-label="Estilo do texto"><button data-style="bold" aria-label="Negrito" aria-pressed="false"><b>B</b></button><button data-style="italic" aria-label="Itálico" aria-pressed="false"><i>I</i></button><button data-style="shadow" aria-label="Sombra" aria-pressed="false">S̲</button></div><div class="alignment" role="group" aria-label="Alinhamento do texto"><button data-align="left" aria-label="Alinhar à esquerda">☰</button><button data-align="center" aria-label="Centralizar">≡</button><button data-align="right" aria-label="Alinhar à direita">☰</button></div><input type="color" id="text-color" aria-label="Cor do texto"></div>
+              <div class="range-field"><div class="setting-line"><label for="text-size">Tamanho</label><output id="text-size-value" for="text-size"></output></div><input id="text-size" type="range" min="12" max="260"></div>
+              <div class="position-grid"><div class="range-field"><div class="setting-line"><label for="text-x">Horizontal</label><output id="text-x-value" for="text-x"></output></div><input id="text-x" type="range" min="0" max="100"></div><div class="range-field"><div class="setting-line"><label for="text-y">Vertical</label><output id="text-y-value" for="text-y"></output></div><input id="text-y" type="range" min="0" max="100"></div></div>
+              <div class="position-grid"><div class="range-field"><div class="setting-line"><label for="text-rotation">Rotação</label><output id="text-rotation-value" for="text-rotation"></output></div><input id="text-rotation" type="range" min="-180" max="180"></div><div class="range-field"><div class="setting-line"><label for="text-opacity">Opacidade</label><output id="text-opacity-value" for="text-opacity"></output></div><input id="text-opacity" type="range" min="0" max="100"></div></div>
+              <p class="control-hint">Você também pode arrastar o texto na prévia. O tamanho se ajusta para caber na tela.</p>
+            </fieldset>
+          </div>
+        </details>
+        <details class="control-section">
+          <summary>Acabamento <span>04</span></summary><div class="section-content"><div class="setting-line"><label class="field-label" for="grain">TEXTURA GRANULADA</label><input class="switch" type="checkbox" id="grain"></div><div class="range-field"><div class="setting-line"><label for="intensity">Intensidade dos elementos</label><output id="intensity-value" for="intensity"></output></div><input type="range" id="intensity" min="0" max="100"></div></div>
+        </details>
+        <div class="export-area"><button class="button export" id="download"><span aria-hidden="true">↓</span> Baixar wallpaper <span class="file-type" id="file-type">PNG</span></button><p class="export-note">Sem marca d’água. Pronto para sua tela.</p></div>
       </aside>
     </div>
   </section>
-  <footer><span>CRIADO COM LIBERDADE. FEITO PARA VOCÊ.</span><span>Seu próximo recomeço pode estar na sua tela. <span class="footer-star">✳</span></span><span>WALLULTRA STUDIO / 01</span></footer>
+  <footer><span>CRIADO COM LIBERDADE. FEITO PARA VOCÊ.</span><span>Seu próximo recomeço pode estar na sua tela. <span class="footer-star">✳</span></span><span>WALLULTRA STUDIO / 02</span></footer>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="app.js"></script>
