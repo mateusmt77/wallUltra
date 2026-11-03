@@ -10,53 +10,71 @@
 <main>
   <section class="intro"><div><div class="eyebrow">SEU DESKTOP. SUA IDENTIDADE.</div><h1>Um wallpaper que é <em>você.</em><span class="spark">✳</span></h1><p>Explore, misture, crie. Transforme sua tela em um lugar seu.</p></div><div class="intro-note"><span>✧</span> Um pouco de inspiração.<br>Infinitas possibilidades.</div></section>
   <section class="studio" aria-label="Editor de wallpaper">
-    <div class="studio-bar"><div class="project-title"><span class="small-logo">◈</span><input id="project-name" aria-label="Nome do projeto" value="Meu novo universo" maxlength="60"><span class="draft" id="save-status">RASCUNHO</span></div><div class="studio-actions"><span class="desktop-label">▱ &nbsp; Wallpaper para desktop</span><span class="separator"></span><button class="icon-button" id="undo" title="Desfazer" aria-label="Desfazer">↶</button><button class="icon-button" id="redo" title="Refazer" aria-label="Refazer">↷</button></div></div>
+    <div class="studio-bar"><div class="project-title"><span class="small-logo">◈</span><input id="project-name" aria-label="Nome do projeto" value="Meu novo universo" maxlength="60"><span class="draft" id="save-status">RASCUNHO</span></div><div class="studio-actions"><span class="desktop-label">▱ &nbsp; Wallpaper para desktop</span><span class="separator"></span><button class="icon-button" id="undo" title="Desfazer" aria-label="Desfazer"><span aria-hidden="true">↶</span><span>Desfazer</span></button><button class="icon-button" id="redo" title="Refazer" aria-label="Refazer"><span aria-hidden="true">↷</span><span>Refazer</span></button></div></div>
     <div class="editor-grid">
       <aside class="templates-panel"><div class="panel-heading"><h2>Comece com uma ideia</h2><span>01</span></div><p class="panel-description">Um ponto de partida. O resto é seu.</p><div id="templates" class="template-list"></div><div class="tip"><span>✦</span><p><strong>Não existem regras.</strong><br>Troque de estilo sem perder seus textos. Dê o seu toque em cada detalhe.</p></div></aside>
       <section class="workspace" aria-label="Prévia do wallpaper"><div class="workspace-top"><span><span class="live-dot"></span> PRÉVIA AO VIVO</span><span id="canvas-dimensions">1920 × 1080 px</span></div><div class="canvas-wrap"><canvas id="wallpaper" width="1920" height="1080" role="img" aria-label="Prévia do wallpaper personalizado"></canvas></div><div class="canvas-meta"><span>▱ &nbsp; <span id="resolution-label">Full HD</span></span><span id="aspect-label">16:9</span><span id="selection-hint">Arraste os textos para posicionar</span></div><div class="workspace-bottom"><span class="keyboard-tip"><kbd>Ctrl</kbd> + <kbd>Z</kbd> para desfazer</span><button id="shuffle" class="button shuffle"><span aria-hidden="true">⤨</span> Surpreenda-me</button></div></section>
-      <aside class="settings-panel">
-        <div class="panel-heading"><h2>Do seu jeito</h2><span>02</span></div>
-        <p class="panel-description">Mais possibilidades. A mesma liberdade.</p>
-        <details class="control-section" open>
-          <summary>Formato da tela <span>01</span></summary>
-          <div class="section-content"><label class="field-label" for="resolution">RESOLUÇÃO E PROPORÇÃO</label><select id="resolution"></select><p class="control-hint">Do monitor clássico ao setup com duas telas.</p>
-          <label class="field-label export-format-label" for="export-format">FORMATO DO ARQUIVO</label><select id="export-format"><option value="png">PNG · máxima fidelidade</option><option value="jpeg">JPEG · arquivo mais leve</option><option value="webp">WebP · compressão moderna</option></select><div id="quality-control" class="range-field" hidden><div class="setting-line"><label for="export-quality">Qualidade</label><output id="export-quality-value" for="export-quality">92%</output></div><input id="export-quality" type="range" min="10" max="100"></div></div>
-        </details>
-        <details class="control-section" open>
-          <summary>Cores da composição <span>02</span></summary>
-          <div class="section-content"><div id="palettes" class="palettes" role="group" aria-label="Paletas de cores"></div>
-          <div class="color-grid">
-            <label class="color-field"><input type="color" id="background" aria-label="Cor do fundo"><span>Fundo</span></label>
-            <label class="color-field"><input type="color" id="accent" aria-label="Cor de destaque"><span>Destaque</span></label>
-            <label class="color-field"><input type="color" id="secondary" aria-label="Cor secundária"><span>Secundária</span></label>
-            <label class="color-field"><input type="color" id="highlight" aria-label="Cor de luz"><span>Luz</span></label>
-          </div><p class="control-hint" id="palette-name">Lavanda · personalize cada cor</p></div>
-        </details>
-        <details class="control-section" open>
-          <summary>Textos e tipografia <span>03</span></summary>
-          <div class="section-content">
-            <div class="layer-toolbar"><label class="sr-only" for="text-layer">Texto selecionado</label><select id="text-layer"></select><button id="add-text" class="small-button" title="Adicionar texto" aria-label="Adicionar texto">+</button></div>
-            <div class="layer-actions"><button id="duplicate-text" class="text-button">Duplicar</button><button id="remove-text" class="text-button danger">Remover texto</button><button id="remove-all-texts" class="text-button danger">Remover todos</button></div>
-            <p id="empty-texts" class="empty-state" hidden>Sua composição, sem palavras.<br>Use + para adicionar um texto.</p>
+      <aside class="settings-panel" aria-label="Ferramentas de edição">
+        <div class="tools-heading"><h2>Seu toque pessoal</h2><p>Escolha uma categoria para editar.</p></div>
+        <div class="tool-tabs" role="tablist" aria-label="Categorias de edição">
+          <button id="tab-screen" role="tab" aria-controls="tool-screen" aria-selected="false" tabindex="-1" data-tool="screen">Tela</button>
+          <button id="tab-colors" role="tab" aria-controls="tool-colors" aria-selected="false" tabindex="-1" data-tool="colors">Cores</button>
+          <button id="tab-texts" role="tab" aria-controls="tool-texts" aria-selected="true" tabindex="0" data-tool="texts">Textos</button>
+          <button id="tab-effects" role="tab" aria-controls="tool-effects" aria-selected="false" tabindex="-1" data-tool="effects">Efeitos</button>
+        </div>
+        <div class="tool-content" id="tool-content">
+          <section id="tool-screen" role="tabpanel" aria-labelledby="tab-screen" tabindex="0" hidden>
+            <div class="section-intro"><h3>Tamanho e arquivo</h3><p>Prepare seu wallpaper para a tela em que ele vai aparecer.</p></div>
+            <div class="form-group"><label class="field-label" for="resolution">Tamanho do wallpaper</label><p class="control-hint" id="resolution-help">Escolha a resolução do seu monitor. A prévia acompanha a proporção escolhida.</p><select id="resolution" aria-describedby="resolution-help"></select></div>
+            <div class="form-group"><label class="field-label" for="export-format">Formato do download</label><p class="control-hint" id="format-help">PNG preserva os detalhes. JPEG e WebP geram arquivos mais leves.</p><select id="export-format" aria-describedby="format-help"><option value="png">PNG · máxima fidelidade</option><option value="jpeg">JPEG · arquivo mais leve</option><option value="webp">WebP · compressão moderna</option></select></div>
+            <div id="quality-control" class="range-field" hidden><div class="setting-line"><label for="export-quality">Qualidade do arquivo</label><output id="export-quality-value" for="export-quality">92%</output></div><input id="export-quality" type="range" min="10" max="100" aria-describedby="quality-help"><p class="control-hint" id="quality-help">Maior qualidade preserva mais detalhes e aumenta o tamanho do arquivo.</p></div>
+          </section>
+          <section id="tool-colors" role="tabpanel" aria-labelledby="tab-colors" tabindex="0" hidden>
+            <div class="section-intro"><h3>Encontre suas cores</h3><p>Comece com uma paleta ou personalize cada cor da composição.</p></div>
+            <div class="form-group"><h4 class="field-label">Paletas prontas</h4><div id="palettes" class="palettes" role="group" aria-label="Paletas de cores"></div><p class="control-hint" id="palette-name" aria-live="polite">Lavanda selecionada.</p></div>
+            <div class="form-group"><h4 class="field-label">Cores da arte</h4><p class="control-hint">Clique em uma amostra para escolher outra cor. A cor dos textos é editada na aba Textos.</p><div class="color-grid">
+              <label class="color-field"><input type="color" id="background" aria-label="Cor do fundo"><span>Fundo</span></label>
+              <label class="color-field"><input type="color" id="accent" aria-label="Cor de destaque"><span>Destaque</span></label>
+              <label class="color-field"><input type="color" id="secondary" aria-label="Cor secundária"><span>Secundária</span></label>
+              <label class="color-field"><input type="color" id="highlight" aria-label="Cor de luz"><span>Luz</span></label>
+            </div></div>
+          </section>
+          <section id="tool-texts" role="tabpanel" aria-labelledby="tab-texts" tabindex="0">
+            <div class="section-intro"><h3>Palavras do seu jeito</h3><p>Selecione um texto para editar. Cada um tem sua própria aparência e posição.</p></div>
+            <div class="text-management">
+              <div class="setting-line"><label class="field-label" for="text-layer">Texto selecionado</label><span id="layer-count" class="count-badge">3 de 8</span></div>
+              <select id="text-layer"></select>
+              <button id="add-text" class="button add-text" title="Adicionar texto">+ Adicionar texto</button>
+              <div class="layer-actions"><button id="duplicate-text" class="text-button">Duplicar texto</button><button id="remove-text" class="text-button danger">Excluir selecionado</button></div>
+            </div>
+            <p id="empty-texts" class="empty-state" hidden>Sua composição está sem textos.<br>Clique em “Adicionar texto” para começar.</p>
             <fieldset id="text-controls">
               <legend class="sr-only">Editar o texto selecionado</legend>
-              <div class="setting-line"><label class="field-label" for="show-text">EXIBIR ESTE TEXTO</label><input class="switch" type="checkbox" id="show-text"></div>
-              <label class="sr-only" for="headline">Conteúdo do texto selecionado</label><textarea id="headline" rows="3" maxlength="300" placeholder="Sua frase, sua inspiração…"></textarea>
-              <div class="text-counter"><span>Quebre linhas com Enter</span><span id="text-count">0/300</span></div>
-              <label class="sr-only" for="font">Fonte do texto</label><select id="font"></select>
-              <p class="control-hint font-note">Fontes locais; a aparência pode variar conforme o sistema.</p>
-              <div class="typography-toolbar"><div class="alignment" role="group" aria-label="Estilo do texto"><button data-style="bold" aria-label="Negrito" aria-pressed="false"><b>B</b></button><button data-style="italic" aria-label="Itálico" aria-pressed="false"><i>I</i></button><button data-style="shadow" aria-label="Sombra" aria-pressed="false">S̲</button></div><div class="alignment" role="group" aria-label="Alinhamento do texto"><button data-align="left" aria-label="Alinhar à esquerda">☰</button><button data-align="center" aria-label="Centralizar">≡</button><button data-align="right" aria-label="Alinhar à direita">☰</button></div><input type="color" id="text-color" aria-label="Cor do texto"></div>
-              <div class="range-field"><div class="setting-line"><label for="text-size">Tamanho</label><output id="text-size-value" for="text-size"></output></div><input id="text-size" type="range" min="12" max="260"></div>
-              <div class="position-grid"><div class="range-field"><div class="setting-line"><label for="text-x">Horizontal</label><output id="text-x-value" for="text-x"></output></div><input id="text-x" type="range" min="0" max="100"></div><div class="range-field"><div class="setting-line"><label for="text-y">Vertical</label><output id="text-y-value" for="text-y"></output></div><input id="text-y" type="range" min="0" max="100"></div></div>
-              <div class="position-grid"><div class="range-field"><div class="setting-line"><label for="text-rotation">Rotação</label><output id="text-rotation-value" for="text-rotation"></output></div><input id="text-rotation" type="range" min="-180" max="180"></div><div class="range-field"><div class="setting-line"><label for="text-opacity">Opacidade</label><output id="text-opacity-value" for="text-opacity"></output></div><input id="text-opacity" type="range" min="0" max="100"></div></div>
-              <p class="control-hint">Você também pode arrastar o texto na prévia. O tamanho se ajusta para caber na tela.</p>
+              <div class="visibility-row"><div><label for="show-text">Mostrar na composição</label><p class="control-hint">Oculte sem apagar o conteúdo.</p></div><input class="switch" type="checkbox" id="show-text"></div>
+              <div class="form-group"><label class="field-label" for="headline">O que você quer escrever?</label><textarea id="headline" rows="4" maxlength="300" placeholder="Sua frase, sua inspiração…" aria-describedby="text-help"></textarea><div class="text-counter"><span id="text-help">Enter para quebrar a linha</span><span id="text-count">0/300</span></div></div>
+              <div class="text-subsection"><h4>Aparência do texto</h4>
+                <div class="form-group"><label class="field-label" for="font">Fonte</label><select id="font" aria-describedby="font-help"></select><p class="control-hint" id="font-help">Fontes locais: a aparência pode variar conforme o computador.</p></div>
+                <div class="form-group"><span class="field-label" id="text-style-label">Estilo das letras</span><div class="style-buttons" role="group" aria-labelledby="text-style-label"><button data-style="bold" aria-label="Negrito" aria-pressed="false"><b>Negrito</b></button><button data-style="italic" aria-label="Itálico" aria-pressed="false"><i>Itálico</i></button><button data-style="shadow" aria-label="Sombra" aria-pressed="false">Sombra</button></div></div>
+                <div class="form-group"><span class="field-label" id="text-align-label">Alinhamento das linhas</span><div class="alignment" role="group" aria-labelledby="text-align-label"><button data-align="left" aria-label="Alinhar à esquerda">Esquerda</button><button data-align="center" aria-label="Centralizar">Centro</button><button data-align="right" aria-label="Alinhar à direita">Direita</button></div></div>
+                <label class="text-color-field" for="text-color"><span>Cor deste texto</span><input type="color" id="text-color" aria-label="Cor do texto"></label>
+                <div class="range-field"><div class="setting-line"><label for="text-size">Tamanho das letras</label><output id="text-size-value" for="text-size"></output></div><input id="text-size" type="range" min="12" max="260"><p class="control-hint">O texto se ajusta automaticamente para caber na tela.</p></div>
+              </div>
+              <details class="text-subsection position-section" open><summary>Posição e acabamento</summary><p class="control-hint">Use os controles abaixo ou arraste o texto diretamente na prévia.</p>
+                <div class="range-field"><div class="setting-line"><label for="text-x">Posição horizontal</label><output id="text-x-value" for="text-x"></output></div><input id="text-x" type="range" min="0" max="100"><div class="range-limits"><span>Esquerda</span><span>Direita</span></div></div>
+                <div class="range-field"><div class="setting-line"><label for="text-y">Posição vertical</label><output id="text-y-value" for="text-y"></output></div><input id="text-y" type="range" min="0" max="100"><div class="range-limits"><span>Topo</span><span>Base</span></div></div>
+                <div class="range-field"><div class="setting-line"><label for="text-rotation">Rotação do texto</label><output id="text-rotation-value" for="text-rotation"></output></div><input id="text-rotation" type="range" min="-180" max="180"></div>
+                <div class="range-field"><div class="setting-line"><label for="text-opacity">Opacidade do texto</label><output id="text-opacity-value" for="text-opacity"></output></div><input id="text-opacity" type="range" min="0" max="100"><p class="control-hint">0% deixa o texto invisível; 100% mantém a cor sólida.</p></div>
+              </details>
             </fieldset>
-          </div>
-        </details>
-        <details class="control-section">
-          <summary>Acabamento <span>04</span></summary><div class="section-content"><div class="setting-line"><label class="field-label" for="grain">TEXTURA GRANULADA</label><input class="switch" type="checkbox" id="grain"></div><div class="range-field"><div class="setting-line"><label for="intensity">Intensidade dos elementos</label><output id="intensity-value" for="intensity"></output></div><input type="range" id="intensity" min="0" max="100"></div></div>
-        </details>
-        <div class="export-area"><button class="button export" id="download"><span aria-hidden="true">↓</span> Baixar wallpaper <span class="file-type" id="file-type">PNG</span></button><p class="export-note">Sem marca d’água. Pronto para sua tela.</p></div>
+            <div class="clear-texts"><button id="remove-all-texts" class="text-button danger">Remover todos os textos</button><p class="control-hint">Você pode recuperar os textos com “Desfazer”.</p></div>
+          </section>
+          <section id="tool-effects" role="tabpanel" aria-labelledby="tab-effects" tabindex="0" hidden>
+            <div class="section-intro"><h3>O acabamento da arte</h3><p>Ajuste a presença dos elementos e dê uma textura ao seu wallpaper.</p></div>
+            <div class="visibility-row"><div><label for="grain">Textura granulada</label><p class="control-hint">Adiciona um efeito sutil de grão à imagem.</p></div><input class="switch" type="checkbox" id="grain"></div>
+            <div class="range-field"><div class="setting-line"><label for="intensity">Intensidade dos elementos</label><output id="intensity-value" for="intensity"></output></div><input type="range" id="intensity" min="0" max="100"><p class="control-hint">Reduza para uma arte mais discreta ou aumente para destacar as formas.</p></div>
+          </section>
+        </div>
+        <div class="export-area"><button class="button export" id="download"><span aria-hidden="true">↓</span> Baixar wallpaper <span class="file-type" id="file-type">PNG</span></button><p class="export-note">Sem marca d’água · na resolução escolhida</p></div>
       </aside>
     </div>
   </section>

@@ -16,6 +16,19 @@ Abra `http://localhost:3000`. Para outra porta, use `PORT=4000 npm start`.
 
 Se você já tem o projeto, atualize com `git pull origin main` e reinicie o servidor.
 
+## Ferramentas de edição
+
+O painel de edição é organizado em quatro abas:
+
+- **Tela:** resolução do monitor, formato do download e qualidade do arquivo.
+- **Cores:** paletas identificadas pelo nome e seletores para cada cor da arte.
+- **Textos:** escolha do texto, criação e exclusão de camadas, conteúdo, fonte, estilo e posição.
+- **Efeitos:** textura granulada e intensidade dos elementos.
+
+Cada grupo traz rótulos visíveis e explicações. A aba Textos abre inicialmente; ao selecionar um texto pela prévia, ela é aberta automaticamente. As abas também podem ser percorridas com as setas do teclado, Home e End.
+
+No computador, apenas o conteúdo da categoria escolhida rola dentro do painel; a navegação e o botão de download permanecem disponíveis em áreas separadas. Em telas menores, as ferramentas ficam abaixo da prévia, com rolagem natural da página. A biblioteca de estilos passa a ser uma galeria horizontal. O tema acompanha a preferência clara ou escura do sistema.
+
 ## Biblioteca de design
 
 - **8 estilos:** Órbita, Horizonte, Aurora, Equilíbrio, Pôr do sol, Maré, Cosmos e Essência.

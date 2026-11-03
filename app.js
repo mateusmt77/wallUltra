@@ -11,6 +11,7 @@ try {
 let selectedId = state.texts[0]?.id;
 let history = [], future = [], pendingBefore, toastTimer, revision = 0, layouts = [];
 let showSelection = false, drag;
+let activeTool = 'texts';
 const clone = () => structuredClone(state);
 const currentText = () => state.texts.find(t => t.id === selectedId);
 const setValue = (id, value) => { if ($(id).value !== String(value)) $(id).value = value; };
@@ -80,7 +81,9 @@ function sync() {
   $('file-type').textContent = state.exportFormat.toUpperCase();
   $('grain').checked = state.grain;
   $('intensity-value').textContent = state.intensity + '%';
-  $('palette-name').textContent = palettes[state.palette].name + ' · personalize cada cor';
+  const selectedPalette = palettes.find(p => p.accent === state.accent && p.dark === state.background && p.second === state.secondary && p.light === state.highlight);
+  $('palette-name').textContent = selectedPalette ? selectedPalette.name + ' selecionada. Ajuste as cores abaixo se quiser.' : 'Paleta personalizada. Suas cores, do seu jeito.';
+  $('layer-count').textContent = `${state.texts.length} de ${MAX_TEXTS} textos`;
   const layerSelect = $('text-layer');
   const labels = state.texts.map((t, i) => `${i + 1}. ${t.text.replace(/\n/g, ' ').slice(0, 30) || 'Texto vazio'}${t.visible ? '' : ' (oculto)'}`);
   if (layerSelect.options.length !== state.texts.length || state.texts.some((t, i) => layerSelect.options[i]?.value !== t.id)) {
@@ -157,8 +160,37 @@ function palettePatch(index) {
 palettes.forEach((p, i) => {
   const b = document.createElement('button'); b.className = 'palette'; b.dataset.palette = i;
   b.title = p.name; b.setAttribute('aria-label', 'Paleta ' + p.name);
-  const swatch = document.createElement('span'); swatch.style.background = `linear-gradient(135deg, ${p.accent} 50%, ${p.second} 50%)`;
-  b.append(swatch); b.addEventListener('click', () => commit(palettePatch(i))); $('palettes').append(b);
+  const swatch = document.createElement('span'); swatch.className = 'palette-swatch'; swatch.setAttribute('aria-hidden', 'true'); swatch.style.background = `linear-gradient(135deg, ${p.accent} 50%, ${p.second} 50%)`;
+  const label = document.createElement('span'); label.className = 'palette-label'; label.textContent = p.name;
+  b.append(swatch, label); b.addEventListener('click', () => commit(palettePatch(i))); $('palettes').append(b);
+});
+// Accessible category navigation keeps only the active tools in the tab order.
+function activateTool(name, focus = false) {
+  finishEdit();
+  const changed = name !== activeTool;
+  activeTool = name;
+  document.querySelectorAll('[data-tool]').forEach(tab => {
+    const selected = tab.dataset.tool === name;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    $(tab.getAttribute('aria-controls')).hidden = !selected;
+    if (selected && focus) tab.focus();
+  });
+  if (changed) $('tool-content').scrollTop = 0;
+}
+const toolTabs = [...document.querySelectorAll('[data-tool]')];
+toolTabs.forEach((tab, index) => {
+  tab.addEventListener('click', () => activateTool(tab.dataset.tool));
+  tab.addEventListener('keydown', event => {
+    let next;
+    if (event.key === 'ArrowRight') next = (index + 1) % toolTabs.length;
+    if (event.key === 'ArrowLeft') next = (index - 1 + toolTabs.length) % toolTabs.length;
+    if (event.key === 'Home') next = 0;
+    if (event.key === 'End') next = toolTabs.length - 1;
+    if (next === undefined) return;
+    event.preventDefault();
+    activateTool(toolTabs[next].dataset.tool, true);
+  });
 });
 $('resolution').addEventListener('change', e => commit({ resolution: e.target.value }));
 $('export-format').addEventListener('change', e => commit({ exportFormat: e.target.value }));
@@ -226,7 +258,7 @@ canvas.addEventListener('pointerdown', e => {
   // The layer chosen in the controls keeps priority when texts overlap.
   const box = layouts.find(b => b.t.id === selectedId && hit(b)) || [...layouts].reverse().find(hit);
   if (!box) { showSelection = false; draw(); return; }
-  selectedId = box.t.id; showSelection = true;
+  selectedId = box.t.id; showSelection = true; activateTool('texts');
   drag = { before: clone(), start: p, x: box.x, y: box.y, pointerId: e.pointerId };
   canvas.setPointerCapture(e.pointerId); canvas.classList.add('dragging'); e.preventDefault(); sync();
 });
