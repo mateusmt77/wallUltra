@@ -17,7 +17,7 @@ test('migra os projetos do protótipo original preservando texto, fonte e visibi
   assert.equal(s.texts[0].font, 'serif'); assert.equal(s.texts[0].visible, false);
   assert.equal(s.texts[0].align, 'right'); assert.equal(s.texts[0].x, 75);
   assert.equal(s.background, '#202d2b'); assert.equal(s.name, 'Antigo');
-  assert.equal(s.resolution, '3840x2160'); assert.equal(s.version, 3);
+  assert.equal(s.resolution, '3840x2160'); assert.equal(s.version, 4);
 });
 test('projetos sem textos continuam sem textos ao recarregar', () => {
   assert.deepEqual(validateState({ texts: [] }).texts, []);
@@ -32,7 +32,7 @@ test('projetos corrompidos usam padrões seguros e não compartilham objetos', (
   assert.equal(bad.resolution, '1920x1080'); assert.equal(bad.accent, initialState.accent);
 });
 test('limita camadas, conteúdo e valores numéricos de projetos externos', () => {
-  const s = validateState({ intensity: 900, name: 'y'.repeat(100), texts: Array.from({length: 20}, () => ({ id: 'duplicate', text: 'x'.repeat(1000), size: 999, x: -10, y: 999, rotation: 900, opacity: -20, color: 'red', visible: 'yes', unexpected: true })) });
+  const s = validateState({ intensity: 900, name: 'y'.repeat(100), texts: Array.from({length: MAX_TEXTS + 10}, () => ({ id: 'duplicate', text: 'x'.repeat(1000), size: 999, x: -10, y: 999, rotation: 900, opacity: -20, color: 'red', visible: 'yes', unexpected: true })) });
   assert.equal(s.texts.length, MAX_TEXTS); assert.equal(new Set(s.texts.map(t => t.id)).size, MAX_TEXTS);
   assert.equal(s.name.length, 60); assert.equal(s.intensity, 100);
   const t = s.texts[0]; assert.equal(t.text.length, 300); assert.equal(t.size, 260);

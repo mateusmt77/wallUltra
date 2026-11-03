@@ -374,3 +374,84 @@ body { background-image: radial-gradient(ellipse at 90% 0%, #f3d9ff 0, transpare
   .studio-actions { width: 100%; justify-content: flex-end; }
   .studio-actions .file-action { display: inline-flex; }
 }
+
+/* Drawing board: readable material controls and direct manipulation on the canvas. */
+.tool-tabs { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.board-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.board-toolbar button { min-height: 42px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 600; }
+.board-toolbar button.active { color: var(--purple); border-color: var(--purple); background: var(--accent-soft); }
+#board-expand { margin-left: auto; }
+.board-status { margin: 0 0 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.canvas-wrap { position: relative; }
+#wallpaper:not([data-board-tool=select]) { cursor: crosshair; }
+#wallpaper.is-painting { cursor: crosshair; }
+#brush-cursor { position: absolute; z-index: 1; pointer-events: none; border: 1px solid #fff; border-radius: 50%; transform: translate(-50%,-50%); box-shadow: 0 0 0 1px #18131dcc; }
+#brush-cursor[data-material=eraser] { border-style: dashed; }
+#brush-cursor[data-material=marker] { border-radius: 2px; }
+.drawing-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 20px; }
+.drawing-tools button { padding: 14px; min-height: 80px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; color: var(--ink); font-size: 15px; font-weight: 600; }
+.drawing-tools button small { display: block; font-size: 12px; font-weight: 400; line-height: 1.5; margin-top: 5px; color: var(--muted); }
+.drawing-tools button[aria-pressed=true] { color: var(--purple); border-color: var(--purple); background: var(--accent-soft); box-shadow: inset 0 -2px var(--purple); }
+.drawing-tools button[data-brush=shape] { grid-column: 1 / -1; min-height: 70px; }
+.drawing-instructions { padding: 16px; margin: 18px 0 24px; background: var(--accent-soft); color: var(--ink); border-radius: 9px; font-size: 13px; line-height: 1.7; }
+.ink-color-row { display: flex; align-items: center; gap: 12px; }
+input[type=text]#draw-hex, input[type=search] { min-height: 46px; padding: 10px 12px; color: var(--ink); background: var(--input); border: 1px solid var(--line); border-radius: 8px; font-size: 15px; min-width: 0; width: 100%; }
+#draw-hex { font-family: monospace; }
+#draw-color-error { color: var(--danger); }
+#draw-hex[aria-invalid=true] { border-color: var(--danger); }
+.ink-swatches { display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+.ink-swatches button { aspect-ratio: 1; min-width: 0; border: 2px solid var(--line); border-radius: 50%; position: relative; }
+.ink-swatches button[aria-pressed=true] { outline: 2px solid var(--purple); outline-offset: 3px; }
+.ink-layer-note { padding-top: 22px; margin-top: 26px; border-top: 1px solid var(--line); font-size: 13px; }
+.ink-layer-note p { line-height: 1.7; color: var(--muted); margin: 8px 0 0; }
+.drawing-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+#brush-controls:disabled { opacity: .45; }
+#shape-search { margin-bottom: 18px; }
+.shape-library { max-height: 360px; overflow-y: auto; padding: 3px; scrollbar-width: thin; }
+.shape-library button { min-height: 100px; color: var(--ink); background: var(--surface); }
+.shape-library button canvas { display: block; width: 70px; height: 45px; }
+.shape-library button > span:last-child { font-size: 13px; }
+#blank-draw { color: var(--purple); border-color: var(--purple); background: var(--accent-soft); }
+/* Expanded editor keeps the toolbox and removes the surrounding page chrome. */
+body.editor-expanded { overflow: hidden; }
+body.editor-expanded .topbar, body.editor-expanded .hero, body.editor-expanded main > footer { display: none; }
+body.editor-expanded main { max-width: none; padding: 0; }
+.studio.is-expanded { border-radius: 0; border: 0; }
+.is-expanded .creation-nav, .is-expanded .templates-panel { display: none; }
+.is-expanded .editor-grid { grid-template-columns: minmax(0,1fr) 400px; height: calc(100dvh - 72px); }
+.is-expanded .workspace, .is-expanded .settings-panel { height: 100%; min-height: 0; }
+.is-expanded .canvas-wrap { align-self: center; width: min(100%, calc((100dvh - 340px) * var(--canvas-ratio))); }
+.is-expanded .workspace-bottom { position: absolute; bottom: 20px; left: 26px; right: 26px; }
+@media (max-width: 1200px) {
+  .is-expanded .editor-grid { height: calc(100dvh - 126px); }
+  .is-expanded .canvas-wrap { width: min(100%, calc((100dvh - 390px) * var(--canvas-ratio))); }
+}
+@media (max-width: 900px) {
+  body.editor-expanded { overflow: auto; }
+  .is-expanded .editor-grid { grid-template-columns: 1fr; height: auto; }
+  .is-expanded .workspace, .is-expanded .settings-panel { height: auto; }
+  .is-expanded .canvas-wrap { width: 100%; }
+  .is-expanded .workspace-bottom { position: static; }
+  .ink-swatches button { min-height: 32px; max-height: 44px; }
+}
+@media (max-width: 560px) {
+  .tool-tabs { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .board-toolbar { gap: 7px; }.board-toolbar button { font-size: 12px; padding: 8px 10px; }
+  #board-expand { margin-left: 0; }
+  .board-status { font-size: 12px; }
+  .drawing-tools { gap: 8px; }.drawing-tools button { padding: 13px 11px; font-size: 14px; }
+  .ink-swatches { grid-template-columns: repeat(6,minmax(0,1fr)); gap: 12px; }
+  .shape-library { max-height: 400px; }
+  .drawing-actions { grid-template-columns: 1fr; }
+}
+
+.editor-grid { --editor-height: clamp(800px, calc(100svh - 140px), 960px); }
+.workspace > .canvas-wrap { align-self: center; width: min(100%, calc((var(--editor-height) - 320px) * var(--canvas-ratio))); }
+.is-expanded .workspace > .canvas-wrap { width: min(100%, calc((100dvh - 340px) * var(--canvas-ratio))); }
+@media (max-width: 1200px) {
+  .editor-grid { --editor-height: 850px; }
+  .is-expanded .workspace > .canvas-wrap { width: min(100%, calc((100dvh - 390px) * var(--canvas-ratio))); }
+}
+@media (max-width: 900px) {
+  .workspace > .canvas-wrap, .is-expanded .workspace > .canvas-wrap { width: 100%; }
+}

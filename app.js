@@ -1,5 +1,6 @@
-import { palettes, templates, resolutions, fonts, MAX_TEXTS, initialState, createText, blankState, createShape, shapeTypes, MAX_SHAPES, moveLayer, prepareImage, render } from './wallpaper.js';
+import { palettes, templates, resolutions, fonts, MAX_TEXTS, initialState, createText, blankState, createShape, shapeTypes, MAX_SHAPES, moveLayer, prepareImage, shapePath, render } from './wallpaper.js';
 import { loadWorkspaces, parseProject, serializeProject, normalizeImageFile } from './project.js';
+import { MAX_STROKES, MAX_STROKE_POINTS, MAX_DRAWING_POINTS, drawingPoint } from './drawing.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('wallpaper');
@@ -15,6 +16,16 @@ let history = [], future = [], pendingBefore, toastTimer, revision = 0, layouts 
 let showSelection = false, drag;
 let activeTool = 'texts', selectedShapeId, selectionKind = 'text', lastImageSrc;
 let assetBusy = false;
+let boardTool = 'select', lastInkTool = 'pen', paintGesture, paintFrame = 0;
+let expandedEditor = false, previousScroll = 0;
+const brushSettings = {
+  pencil: { color: '#ad7bff', size: 3, opacity: 75, pressure: true },
+  pen: { color: '#ad7bff', size: 6, opacity: 100, pressure: false },
+  brush: { color: '#ff68ae', size: 22, opacity: 100, pressure: true },
+  marker: { color: '#c2ff6d', size: 38, opacity: 32, pressure: false },
+  eraser: { color: '#ffffff', size: 60, opacity: 100, pressure: false },
+  shape: { color: '#ad7bff', size: 4, opacity: 100, type: 'rectangle', fill: false, pressure: false }
+};
 const clone = () => structuredClone(state);
 const currentShape = () => state.shapes.find(shape => shape.id === selectedShapeId);
 const currentText = () => state.texts.find(t => t.id === selectedId);
@@ -26,8 +37,11 @@ function toast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 3500);
 }
+// History shares immutable state. Replace layer arrays/items instead of mutating them.
 function remember(before) {
-  if (JSON.stringify(before) === JSON.stringify(state)) return;
+  const equalItem = (a, b) => a === b || (a && b && typeof a === 'object' && typeof b === 'object' && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every(key => a[key] === b[key]));
+  const equalValue = (a, b) => a === b || (Array.isArray(a) && Array.isArray(b) ? a.length === b.length && a.every((item, i) => equalItem(item, b[i])) : equalItem(a, b));
+  if (Object.keys(before).every(key => equalValue(before[key], state[key]))) return;
   history.push(before);
   if (history.length > 60) history.shift();
   future = [];
@@ -41,8 +55,9 @@ function finishEdit() {
   sync();
 }
 function commit(patch) {
+  if (paintGesture) cancelPaint();
   finishEdit();
-  const before = clone();
+  const before = state;
   state = { ...state, ...patch };
   remember(before);
   sync();
@@ -53,7 +68,8 @@ function patchText(patch) {
   commit({ texts: state.texts.map(t => t.id === selectedId ? { ...t, ...patch } : t) });
 }
 function liveEdit(patch) {
-  pendingBefore ??= clone();
+  if (paintGesture) cancelPaint();
+  pendingBefore ??= state;
   state = { ...state, ...patch };
   $('save-status').textContent = 'RASCUNHO';
   sync();
@@ -64,8 +80,8 @@ function liveText(patch) {
   liveEdit({ texts: state.texts.map(t => t.id === selectedId ? { ...t, ...patch } : t) });
 }
 function draw() {
-  layouts = render(canvas, state);
-  const box = showSelection && layouts.find(b => b.kind === selectionKind && b.item.id === (selectionKind === 'text' ? selectedId : selectedShapeId));
+  layouts = render(canvas, state, { draftStroke: paintGesture?.stroke, draftShape: paintGesture?.shape });
+  const box = !paintGesture && showSelection && layouts.find(b => b.kind === selectionKind && b.item.id === (selectionKind === 'text' ? selectedId : selectedShapeId));
   if (!box) return;
   const ctx = canvas.getContext('2d');
   ctx.save();
@@ -102,7 +118,7 @@ function sync() {
   $('text-controls').disabled = !text;
   $('empty-texts').hidden = !!text;
   $('add-text').disabled = state.texts.length >= MAX_TEXTS;
-  $('add-text').title = state.texts.length >= MAX_TEXTS ? 'Limite de 8 textos atingido' : `Adicionar texto (${state.texts.length}/${MAX_TEXTS})`;
+  $('add-text').title = state.texts.length >= MAX_TEXTS ? `Limite de ${MAX_TEXTS} textos atingido` : `Adicionar texto (${state.texts.length}/${MAX_TEXTS})`;
   $('duplicate-text').disabled = !text || state.texts.length >= MAX_TEXTS;
   $('remove-text').disabled = !text;
   $('remove-all-texts').disabled = !state.texts.length;
@@ -139,6 +155,7 @@ function sync() {
   const w = unitW * multiple, h = unitH * multiple;
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   const format = resolutions.find(r => r.value === state.resolution);
+  document.querySelector('.workspace').style.setProperty('--canvas-ratio', String(width / height));
   $('canvas-dimensions').textContent = `${width} × ${height} px`;
   $('aspect-label').textContent = format.ratio;
   $('resolution-label').textContent = format.name;
@@ -178,10 +195,12 @@ palettes.forEach((p, i) => {
 });
 // Accessible category navigation keeps only the active tools in the tab order.
 function activateTool(name, focus = false) {
+  if (paintGesture) cancelPaint();
+  if (['texts', 'elements'].includes(name) && boardTool !== 'select') setBoardTool('select', false);
   finishEdit();
   const changed = name !== activeTool;
   activeTool = name;
-  document.querySelectorAll('[data-tool]').forEach(tab => {
+  document.querySelectorAll('.tool-tabs [data-tool]').forEach(tab => {
     const selected = tab.dataset.tool === name;
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
@@ -190,7 +209,7 @@ function activateTool(name, focus = false) {
   });
   if (changed) $('tool-content').scrollTop = 0;
 }
-const toolTabs = [...document.querySelectorAll('[data-tool]')];
+const toolTabs = [...document.querySelectorAll('.tool-tabs [data-tool]')];
 toolTabs.forEach((tab, index) => {
   tab.addEventListener('click', () => activateTool(tab.dataset.tool));
   tab.addEventListener('keydown', event => {
@@ -216,7 +235,7 @@ for (const id of ['accent', 'background', 'secondary', 'highlight', 'intensity',
   $(id).addEventListener('change', finishEdit);
   $(id).addEventListener('blur', finishEdit);
 }
-$('text-layer').addEventListener('change', e => { finishEdit(); selectedId = e.target.value; selectionKind = 'text'; showSelection = true; sync(); });
+$('text-layer').addEventListener('change', e => { finishEdit(); setBoardTool('select', false); selectedId = e.target.value; selectionKind = 'text'; showSelection = true; sync(); });
 $('add-text').addEventListener('click', () => {
   finishEdit(); if (state.texts.length >= MAX_TEXTS) return;
   const text = createText(crypto.randomUUID(), { color: state.highlight });
@@ -243,10 +262,11 @@ document.querySelectorAll('[data-align]').forEach(b => b.addEventListener('click
 document.querySelectorAll('[data-style]').forEach(b => b.addEventListener('click', () => patchText({ [b.dataset.style]: !currentText()?.[b.dataset.style] })));
 
 function travel(undo) {
+  if (paintGesture) { cancelPaint(); return; }
   finishEdit();
   const source = undo ? history : future, target = undo ? future : history;
   if (!source.length) return;
-  target.push(clone()); state = source.pop(); revision++;
+  target.push(state); state = source.pop(); revision++;
   $('save-status').textContent = 'RASCUNHO'; sync();
 }
 $('undo').addEventListener('click', () => travel(true));
@@ -261,7 +281,8 @@ function point(event) {
 }
 canvas.addEventListener('pointerdown', e => {
   if (e.button !== 0 || !e.isPrimary) return;
-  finishEdit(); const p = point(e);
+  if (boardTool !== 'select') { startPaint(e); return; }
+  finishEdit(); canvas.focus({ preventScroll: true }); const p = point(e);
   const hit = b => {
     const dx = p.x - b.x, dy = p.y - b.y;
     const x = dx * Math.cos(b.angle) + dy * Math.sin(b.angle), y = -dx * Math.sin(b.angle) + dy * Math.cos(b.angle);
@@ -273,10 +294,12 @@ canvas.addEventListener('pointerdown', e => {
   selectionKind = box.kind;
   if (box.kind === 'text') selectedId = box.item.id; else selectedShapeId = box.item.id;
   showSelection = true; activateTool(box.kind === 'text' ? 'texts' : 'elements');
-  drag = { before: clone(), start: p, x: box.x, y: box.y, pointerId: e.pointerId };
+  drag = { before: state, start: p, x: box.x, y: box.y, pointerId: e.pointerId };
   canvas.setPointerCapture(e.pointerId); canvas.classList.add('dragging'); e.preventDefault(); sync();
 });
 canvas.addEventListener('pointermove', e => {
+  updateBrushCursor(e);
+  if (paintGesture) { movePaint(e); return; }
   if (!drag || e.pointerId !== drag.pointerId) return;
   const p = point(e), W = 1080 * canvas.width / canvas.height;
   const x = Math.min(100, Math.max(0, (drag.x + p.x - drag.start.x) / W * 100));
@@ -286,13 +309,15 @@ canvas.addEventListener('pointermove', e => {
   state = { ...state, [key]: state[key].map(item => item.id === id ? { ...item, x, y } : item) }; sync();
 });
 function finishDrag(e) {
+  if (paintGesture) { finishPaint(e); return; }
   if (!drag || e.pointerId !== drag.pointerId) return;
   const before = drag.before; drag = undefined;
   canvas.classList.remove('dragging'); remember(before); sync();
 }
 canvas.addEventListener('pointerup', finishDrag);
-canvas.addEventListener('pointercancel', finishDrag);
-canvas.addEventListener('lostpointercapture', finishDrag);
+canvas.addEventListener('pointercancel', e => { if (paintGesture && e.pointerId === paintGesture.pointerId) cancelPaint(); else if (!paintGesture) finishDrag(e); });
+canvas.addEventListener('lostpointercapture', e => { if (paintGesture && e.pointerId === paintGesture.pointerId) cancelPaint(); else if (!paintGesture) finishDrag(e); });
+canvas.addEventListener('pointerleave', () => { $('brush-cursor').hidden = true; });
 $('shuffle').addEventListener('click', () => {
   const template = templates[Math.floor(Math.random() * templates.length)];
   const palette = Math.floor(Math.random() * palettes.length);
@@ -302,7 +327,7 @@ $('shuffle').addEventListener('click', () => {
 $('save').addEventListener('click', () => {
   finishEdit();
   try { workspaces[state.mode].state = state;
-    localStorage.setItem('wallultra-project', JSON.stringify({ app: 'wallultra-workspaces', version: 3, activeMode: state.mode, projects: { templates: workspaces.templates.state, blank: workspaces.blank.state } })); $('save-status').textContent = 'SALVO'; toast('Seus dois espaços de criação foram salvos neste navegador.'); }
+    localStorage.setItem('wallultra-project', JSON.stringify({ app: 'wallultra-workspaces', version: 4, activeMode: state.mode, projects: { templates: workspaces.templates.state, blank: workspaces.blank.state } })); $('save-status').textContent = 'SALVO'; toast('Seus dois espaços de criação foram salvos neste navegador.'); }
   catch { toast('O armazenamento está cheio ou bloqueado. Use “Baixar projeto” para guardar sua criação em um arquivo.'); }
 });
 $('download').addEventListener('click', async () => {
@@ -328,6 +353,7 @@ $('download').addEventListener('click', async () => {
 });
 function switchMode(mode) {
   if (mode === state.mode || assetBusy) return;
+  setBoardTool('select', false);
   finishEdit();
   workspaces[state.mode] = { state, history, future };
   const workspace = workspaces[mode];
@@ -363,6 +389,7 @@ function patchShape(patch, live = false) {
   if (live) liveEdit(update); else commit(update);
 }
 function addShape(type) {
+  setBoardTool('select', false);
   finishEdit(); if (state.shapes.length >= MAX_SHAPES) return;
   const shape = createShape(crypto.randomUUID(), type, { color: state.accent });
   selectedShapeId = shape.id; selectionKind = 'shape'; showSelection = true;
@@ -371,11 +398,14 @@ function addShape(type) {
 shapeTypes.forEach(type => {
   $('shape-type').add(new Option(type.name, type.id));
   const button = document.createElement('button'); button.dataset.addShape = type.id;
-  const symbol = document.createElement('span'); symbol.textContent = type.symbol; symbol.setAttribute('aria-hidden', 'true');
+  const symbol = document.createElement('canvas'); symbol.width = 100; symbol.height = 64; symbol.setAttribute('aria-hidden', 'true');
+  const ctx = symbol.getContext('2d'); ctx.translate(50, 32); ctx.fillStyle = '#a979ed'; ctx.strokeStyle = '#a979ed'; ctx.lineWidth = 4;
+  shapePath(ctx, type.id, 48, 42); if (type.id !== 'line') ctx.fill(); else ctx.stroke();
+  button.dataset.shapeName = type.name;
   const label = document.createElement('span'); label.textContent = type.name;
   button.append(symbol, label); button.addEventListener('click', () => addShape(type.id)); $('shape-library').append(button);
 });
-$('shape-layer').addEventListener('change', event => { finishEdit(); selectedShapeId = event.target.value; selectionKind = 'shape'; showSelection = true; sync(); });
+$('shape-layer').addEventListener('change', event => { finishEdit(); setBoardTool('select', false); selectedShapeId = event.target.value; selectionKind = 'shape'; showSelection = true; sync(); });
 $('shape-type').addEventListener('change', event => patchShape({ type: event.target.value }));
 $('duplicate-shape').addEventListener('click', () => {
   finishEdit(); const source = currentShape(); if (!source || state.shapes.length >= MAX_SHAPES) return;
@@ -383,7 +413,7 @@ $('duplicate-shape').addEventListener('click', () => {
   selectedShapeId = shape.id; selectionKind = 'shape'; showSelection = true; commit({ shapes: [...state.shapes, shape] });
 });
 $('remove-shape').addEventListener('click', () => commit({ shapes: state.shapes.filter(shape => shape.id !== selectedShapeId) }));
-for (const key of ['visible', 'shadow']) $('shape-' + key).addEventListener('change', event => patchShape({ [key]: event.target.checked }));
+for (const key of ['visible', 'shadow', 'fill', 'keepInside']) $('shape-' + key).addEventListener('change', event => patchShape({ [key]: event.target.checked }));
 for (const key of ['color', 'strokeColor', 'strokeWidth', 'width', 'height', 'x', 'y', 'rotation', 'opacity']) {
   const element = $('shape-' + key);
   element.addEventListener('input', event => patchShape({ [key]: ['color', 'strokeColor'].includes(key) ? event.target.value : Number(event.target.value) }, true));
@@ -401,6 +431,7 @@ for (const [id, key] of [...globalRanges, ['frame-color', 'frameColor']]) {
   $(id).addEventListener('change', finishEdit); $(id).addEventListener('blur', finishEdit);
 }
 function syncExtended() {
+  syncDrawingUI();
   const blank = state.mode === 'blank';
   modeTabs.forEach(tab => {
     const selected = tab.dataset.mode === state.mode;
@@ -430,7 +461,7 @@ function syncExtended() {
   $('duplicate-shape').disabled = !shape || state.shapes.length >= MAX_SHAPES;
   if (shape) {
     for (const key of ['type', 'color', 'strokeColor', 'strokeWidth', 'width', 'height', 'x', 'y', 'rotation', 'opacity']) setValue('shape-' + key, shape[key]);
-    for (const key of ['visible', 'shadow']) $('shape-' + key).checked = shape[key];
+    for (const key of ['visible', 'shadow', 'fill', 'keepInside']) $('shape-' + key).checked = shape[key];
     for (const [key, suffix] of [['strokeWidth', ' px'], ['width', ' px'], ['height', ' px'], ['x', '%'], ['y', '%'], ['rotation', '°'], ['opacity', '%']]) $('shape-' + key + '-value').textContent = Math.round(shape[key]) + suffix;
   }
   for (const [prefix, collection, id] of [['shape', 'shapes', selectedShapeId], ['text', 'texts', selectedId]]) {
@@ -482,11 +513,185 @@ $('project-file').addEventListener('change', async event => {
   const file = event.target.files[0]; if (!file || assetBusy) return;
   assetBusy = true; sync();
   try {
-    if (file.size > 8 * 1024 * 1024) throw new Error('O projeto deve ter no máximo 8 MB.');
+    if (file.size > 32 * 1024 * 1024) throw new Error('O projeto deve ter no máximo 32 MB.');
     const project = parseProject(await file.text()); await prepareImage(project.image);
     assetBusy = false; switchMode(project.mode); commit(project); toast('Projeto aberto. Você pode desfazer a importação.');
   } catch (error) { toast(error.message); }
   finally { assetBusy = false; event.target.value = ''; sync(); }
+});
+
+const toolNames = { select: 'Selecionar', pencil: 'Lápis', pen: 'Caneta', brush: 'Pincel', marker: 'Marcador', eraser: 'Borracha', shape: 'Desenhar forma' };
+const inkColors = [
+  ['#ffffff', 'Branco'], ['#171321', 'Preto'], ['#ad7bff', 'Violeta'], ['#7138df', 'Roxo'],
+  ['#ff68ae', 'Rosa'], ['#ff3c53', 'Vermelho'], ['#ff8b42', 'Laranja'], ['#ffdb52', 'Amarelo'],
+  ['#c2ff6d', 'Lima'], ['#22c783', 'Verde'], ['#28dcd0', 'Turquesa'], ['#49bbff', 'Azul claro'],
+  ['#3968ee', 'Azul'], ['#8856bd', 'Ameixa'], ['#c78c68', 'Terracota'], ['#97a3b6', 'Cinza']
+];
+function currentBrush() { return brushSettings[boardTool] || brushSettings[lastInkTool]; }
+function setBoardTool(tool, openPanel = true) {
+  if (paintGesture) cancelPaint();
+  if (!(tool === 'select' || tool in brushSettings)) return;
+  boardTool = tool;
+  if (['pencil', 'pen', 'brush', 'marker'].includes(tool)) lastInkTool = tool;
+  if (openPanel) activateTool('drawing');
+  if (tool !== 'select') showSelection = false;
+  $('brush-cursor').hidden = true;
+  syncDrawingUI(); draw();
+}
+function syncDrawingUI() {
+  const settings = currentBrush(), erasing = boardTool === 'eraser', shaping = boardTool === 'shape', selecting = boardTool === 'select';
+  canvas.dataset.boardTool = boardTool;
+  for (const button of document.querySelectorAll('[data-brush]')) button.setAttribute('aria-pressed', String(button.dataset.brush === boardTool));
+  for (const [id, active] of [['board-select', selecting], ['board-draw', !selecting && !erasing], ['board-eraser', erasing]]) {
+    $(id).classList.toggle('active', active); $(id).setAttribute('aria-pressed', String(active));
+  }
+  $('selection-hint').textContent = selecting ? 'Arraste textos e formas para posicionar' : erasing ? 'Apaga apenas os traços livres' : shaping ? 'Arraste para definir o tamanho' : 'Desenhe com mouse, toque ou caneta';
+  $('board-status').textContent = selecting ? 'Selecione e arraste textos ou formas. Desenho livre: use a aba Desenho.' : shaping ? 'Arraste para criar uma forma. Shift mantém largura e altura iguais. Esc cancela.' : `${toolNames[boardTool]} ativo · desenhe na tela. Esc cancela o gesto; Ctrl/Cmd + Z desfaz.`;
+  $('drawing-instructions').textContent = selecting ? 'Modo de seleção ativo. Escolha um material abaixo para desenhar, ou arraste textos e formas na prévia.' : erasing ? 'Passe a borracha sobre os traços livres. O fundo, as imagens, as formas e os textos serão preservados.' : shaping ? 'Clique ou arraste na prévia para desenhar a forma escolhida. Volte a Selecionar para movê-la depois.' : `${toolNames[boardTool]} ativo. Desenhe diretamente na prévia; cor, espessura e opacidade são lembradas para cada material durante a sessão.`;
+  $('brush-controls').disabled = selecting;
+  $('shape-draw-options').hidden = !shaping;
+  $('ink-colors').hidden = erasing;
+  $('pressure-control').hidden = !['pencil', 'brush'].includes(boardTool);
+  setValue('draw-shape-type', brushSettings.shape.type); $('draw-shape-fill').checked = brushSettings.shape.fill;
+  $('draw-shape-fill').disabled = brushSettings.shape.type === 'line';
+  setValue('draw-color', settings.color); setValue('draw-hex', settings.color.toUpperCase());
+  $('draw-color-error').hidden = true; $('draw-hex').setAttribute('aria-invalid', 'false');
+  setValue('draw-size', settings.size); setValue('draw-opacity', settings.opacity); $('draw-pressure').checked = settings.pressure;
+  $('draw-size-value').textContent = settings.size + ' px'; $('draw-opacity-value').textContent = settings.opacity + '%';
+  $('draw-size-label').textContent = erasing ? 'Tamanho da borracha' : shaping ? 'Espessura do contorno' : 'Espessura do traço';
+  $('draw-opacity-label').textContent = erasing ? 'Força da borracha' : shaping ? 'Opacidade da forma' : 'Opacidade da tinta';
+  document.querySelectorAll('[data-ink-color]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.inkColor === settings.color.toLowerCase())));
+  $('remove-last-stroke').disabled = !state.strokes.length; $('clear-drawing').disabled = !state.strokes.length;
+  $('stroke-count').textContent = state.strokes.length ? `${state.strokes.length} gesto(s) no desenho. Os traços e as passadas da borracha são salvos com o projeto.` : 'Nenhum traço ainda. Sua próxima ideia começa com um gesto.';
+}
+function queuePaint() {
+  if (paintFrame) return;
+  paintFrame = requestAnimationFrame(() => { paintFrame = 0; draw(); });
+}
+function updateBrushCursor(event) {
+  const cursor = $('brush-cursor'), rect = canvas.getBoundingClientRect();
+  if (['select', 'shape'].includes(boardTool) || event.pointerType === 'touch' || event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) { cursor.hidden = true; return; }
+  const size = Math.max(5, currentBrush().size * rect.height / 1080);
+  cursor.hidden = false; cursor.dataset.material = boardTool;
+  cursor.style.width = cursor.style.height = size + 'px';
+  cursor.style.left = event.clientX - rect.left + 'px'; cursor.style.top = event.clientY - rect.top + 'px';
+}
+function strokePoint(event) {
+  const p = point(event), W = 1080 * canvas.width / canvas.height;
+  const pressure = event.pointerType === 'pen' ? (event.pressure > 0 ? event.pressure : paintGesture?.stroke?.points.at(-1)?.[2] || .5) : 1;
+  return drawingPoint(p.x, p.y, W, pressure);
+}
+function startPaint(event) {
+  finishEdit();
+  if (paintGesture) return;
+  const total = state.strokes.reduce((count, stroke) => count + stroke.points.length, 0);
+  if (boardTool === 'shape' && state.shapes.length >= MAX_SHAPES) { toast(`O projeto já tem ${MAX_SHAPES} formas. Exclua uma para continuar.`); return; }
+  if (boardTool !== 'shape' && (state.strokes.length >= MAX_STROKES || total >= MAX_DRAWING_POINTS)) { toast('Este desenho ficou muito grande. Baixe uma cópia do projeto e remova alguns traços para continuar.'); return; }
+  if (boardTool === 'eraser' && !state.strokes.length) { toast('Ainda não há traços livres para apagar.'); return; }
+  canvas.focus({ preventScroll: true }); showSelection = false;
+  paintGesture = { pointerId: event.pointerId, tool: boardTool, start: point(event), settings: { ...currentBrush() }, limit: Math.min(MAX_STROKE_POINTS, MAX_DRAWING_POINTS - total) };
+  if (boardTool !== 'shape') paintGesture.stroke = { tool: boardTool, ...paintGesture.settings, points: [strokePoint(event)] };
+  canvas.setPointerCapture(event.pointerId); canvas.classList.add('is-painting'); event.preventDefault();
+  updateBrushCursor(event); queuePaint();
+}
+function shapeFromGesture(event, click = false) {
+  const W = 1080 * canvas.width / canvas.height, start = paintGesture.start, end = point(event), settings = paintGesture.settings;
+  end.x = Math.max(0, Math.min(W, end.x)); end.y = Math.max(0, Math.min(1080, end.y));
+  let dx = end.x - start.x, dy = end.y - start.y;
+  if (event.shiftKey && !click) {
+    const side = Math.min(Math.max(Math.abs(dx), Math.abs(dy)), dx < 0 ? start.x : W - start.x, dy < 0 ? start.y : 1080 - start.y);
+    dx = (dx < 0 ? -1 : 1) * side; dy = (dy < 0 ? -1 : 1) * side;
+  }
+  return createShape('draft', settings.type, { x: (click ? start.x : start.x + dx / 2) / W * 100, y: (click ? start.y : start.y + dy / 2) / 1080 * 100,
+    width: click ? 200 : Math.max(1, Math.abs(dx)), height: click ? 200 : Math.max(1, Math.abs(dy)),
+    color: settings.color, strokeColor: settings.color, strokeWidth: settings.size, fill: settings.fill,
+    opacity: settings.opacity, keepInside: false, flipX: settings.type === 'line' && dx < 0, flipY: settings.type === 'line' && dy < 0 });
+}
+function movePaint(event) {
+  if (!paintGesture || event.pointerId !== paintGesture.pointerId) return;
+  if (paintGesture.tool === 'shape') paintGesture.shape = shapeFromGesture(event);
+  else {
+    const events = event.getCoalescedEvents?.();
+    for (const sample of events?.length ? events : [event]) {
+      const next = strokePoint(sample), points = paintGesture.stroke.points, last = points.at(-1);
+      if (Math.hypot(next[0] - last[0], next[1] - last[1]) < .0008) continue;
+      if (points.length >= paintGesture.limit) { paintGesture.clipped = true; break; }
+      points.push(next);
+    }
+  }
+  queuePaint();
+}
+function releasePaint() {
+  const gesture = paintGesture; paintGesture = undefined;
+  if (paintFrame) cancelAnimationFrame(paintFrame); paintFrame = 0;
+  canvas.classList.remove('is-painting');
+  if (gesture && canvas.hasPointerCapture(gesture.pointerId)) canvas.releasePointerCapture(gesture.pointerId);
+  return gesture;
+}
+function cancelPaint() { releasePaint(); $('brush-cursor').hidden = true; draw(); }
+function finishPaint(event) {
+  if (!paintGesture || event.pointerId !== paintGesture.pointerId) return;
+  movePaint(event);
+  if (paintGesture.tool === 'shape') {
+    const end = point(event), click = Math.hypot(end.x - paintGesture.start.x, end.y - paintGesture.start.y) < 3;
+    paintGesture.shape = shapeFromGesture(event, click);
+  }
+  const gesture = releasePaint();
+  if (gesture.tool === 'shape') {
+    const shape = { ...gesture.shape, id: crypto.randomUUID() }; selectedShapeId = shape.id; selectionKind = 'shape';
+    commit({ shapes: [...state.shapes, shape] });
+  } else {
+    const stroke = { ...gesture.stroke, points: gesture.stroke.points.map(p => [...p]) };
+    commit({ strokes: [...state.strokes, stroke] });
+    if (gesture.clipped) toast('Este traço ficou longo. Continue com um novo gesto; o desenho anterior foi preservado.');
+  }
+}
+for (const button of document.querySelectorAll('[data-brush]')) button.addEventListener('click', () => setBoardTool(button.dataset.brush));
+function toggleExpandedEditor() {
+  if (!expandedEditor) previousScroll = window.scrollY;
+  expandedEditor = !expandedEditor;
+  document.body.classList.toggle('editor-expanded', expandedEditor);
+  $('studio').classList.toggle('is-expanded', expandedEditor);
+  $('board-expand').setAttribute('aria-pressed', String(expandedEditor));
+  $('board-expand').textContent = expandedEditor ? 'Voltar ao site' : 'Ampliar editor';
+  window.scrollTo(0, expandedEditor ? 0 : previousScroll);
+}
+$('board-expand').addEventListener('click', toggleExpandedEditor);
+$('board-select').addEventListener('click', () => setBoardTool('select', false));
+$('board-draw').addEventListener('click', () => setBoardTool(lastInkTool));
+$('board-eraser').addEventListener('click', () => setBoardTool('eraser'));
+$('blank-draw').addEventListener('click', () => setBoardTool(lastInkTool));
+$('draw-shape-type').replaceChildren(...shapeTypes.map(type => new Option(type.name, type.id)));
+$('draw-shape-type').addEventListener('change', event => { brushSettings.shape.type = event.target.value; syncDrawingUI(); });
+$('draw-shape-fill').addEventListener('change', event => { brushSettings.shape.fill = event.target.checked; });
+$('draw-size').addEventListener('input', event => { currentBrush().size = Number(event.target.value); syncDrawingUI(); });
+$('draw-opacity').addEventListener('input', event => { currentBrush().opacity = Number(event.target.value); syncDrawingUI(); });
+$('draw-pressure').addEventListener('change', event => { currentBrush().pressure = event.target.checked; });
+function setInkColor(color) { currentBrush().color = color.toLowerCase(); syncDrawingUI(); }
+$('draw-color').addEventListener('input', event => setInkColor(event.target.value));
+$('draw-hex').addEventListener('change', event => {
+  if (/^#[a-f\d]{6}$/i.test(event.target.value)) setInkColor(event.target.value);
+  else { $('draw-color-error').hidden = false; event.target.setAttribute('aria-invalid', 'true'); }
+});
+inkColors.forEach(([color, name]) => {
+  const button = document.createElement('button'); button.dataset.inkColor = color; button.style.background = color;
+  button.title = name; button.setAttribute('aria-label', `Tinta ${name}`); button.setAttribute('aria-pressed', 'false');
+  button.addEventListener('click', () => setInkColor(color)); $('ink-swatches').append(button);
+});
+$('clear-drawing').addEventListener('click', () => { commit({ strokes: [] }); toast('Desenho limpo. Use Desfazer para recuperar os traços.'); });
+$('remove-last-stroke').addEventListener('click', () => commit({ strokes: state.strokes.slice(0, -1) }));
+$('shape-search').addEventListener('input', event => {
+  const normalize = text => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const query = normalize(event.target.value.trim()); let matches = 0;
+  document.querySelectorAll('[data-add-shape]').forEach(button => { button.hidden = !normalize(button.dataset.shapeName).includes(query); if (!button.hidden) matches++; });
+  $('shape-search-empty').hidden = !!matches;
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && paintGesture) { event.preventDefault(); cancelPaint(); return; }
+  if (event.key === 'Escape' && expandedEditor) { event.preventDefault(); toggleExpandedEditor(); return; }
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || event.ctrlKey || event.metaKey || event.altKey) return;
+  const tool = { v: 'select', p: 'pencil', l: 'pen', b: 'brush', m: 'marker', e: 'eraser', f: 'shape' }[event.key.toLowerCase()];
+  if (tool) { event.preventDefault(); setBoardTool(tool); }
 });
 
 for (const workspace of Object.values(workspaces)) {

@@ -18,16 +18,16 @@ export function loadWorkspaces(raw) {
   return result;
 }
 export function parseProject(raw) {
-  if (raw.length > 8 * 1024 * 1024) throw new Error('O projeto deve ter no máximo 8 MB.');
+  if (raw.length > 32 * 1024 * 1024) throw new Error('O projeto deve ter no máximo 32 MB.');
   let data;
   try { data = JSON.parse(raw); } catch { throw new Error('O arquivo não contém um projeto válido.'); }
   if (data?.app !== 'wallultra' || !data.project || typeof data.project !== 'object' || !Array.isArray(data.project.texts)) throw new Error('Escolha um projeto exportado pelo WallUltra.');
-  if (!Number.isInteger(data.schema) || data.schema > 3 || data.schema < 1) throw new Error('Esta versão do projeto não é compatível.');
+  if (!Number.isInteger(data.schema) || data.schema > 4 || data.schema < 1) throw new Error('Esta versão do projeto não é compatível.');
   if (data.project.image && !validImageSource(data.project.image.src)) throw new Error('A imagem dentro do projeto é inválida ou muito grande.');
   return validateState(data.project);
 }
 export function serializeProject(state) {
-  return JSON.stringify({ app: 'wallultra', schema: 3, project: state }, null, 2);
+  return JSON.stringify({ app: 'wallultra', schema: 4, project: state }, null, 2);
 }
 export async function normalizeImageFile(file) {
   if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) throw new Error('Escolha uma imagem PNG, JPEG ou WebP.');

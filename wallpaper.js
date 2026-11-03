@@ -1,3 +1,4 @@
+import { validateStrokes, renderInk } from './drawing.js';
 export const palettes = [
   { name: 'Lavanda', accent: '#b8a0ed', dark: '#24232e', light: '#eee9f5', second: '#766591' },
   { name: 'Sálvia', accent: '#b2c99e', dark: '#202d2b', light: '#eff0df', second: '#668c7d' },
@@ -44,19 +45,28 @@ export const fonts = [
   { id: 'impact', name: 'Impacto · Impact', family: 'Impact, "Arial Black", sans-serif' },
   { id: 'hand', name: 'Manuscrita · Cursiva', family: '"Comic Sans MS", cursive' }
 ];
-export const MAX_TEXTS = 8;
-export const MAX_SHAPES = 24;
+export const MAX_TEXTS = 32;
+export const MAX_SHAPES = 100;
 export const shapeTypes = [
   { id: 'ellipse', name: 'Círculo / elipse', symbol: '●' },
   { id: 'rectangle', name: 'Retângulo', symbol: '■' },
   { id: 'pill', name: 'Forma arredondada', symbol: '▰' },
   { id: 'triangle', name: 'Triângulo', symbol: '▲' },
   { id: 'star', name: 'Estrela', symbol: '★' },
-  { id: 'ring', name: 'Anel', symbol: '◯' }
+  { id: 'ring', name: 'Anel', symbol: '◯' },
+  { id: 'diamond', name: 'Losango' }, { id: 'pentagon', name: 'Pentágono' },
+  { id: 'hexagon', name: 'Hexágono' }, { id: 'octagon', name: 'Octógono' },
+  { id: 'heart', name: 'Coração' }, { id: 'arrow', name: 'Seta à direita' },
+  { id: 'arrowLeft', name: 'Seta à esquerda' }, { id: 'chevron', name: 'Chevron' },
+  { id: 'line', name: 'Linha' }, { id: 'cross', name: 'Cruz' },
+  { id: 'bolt', name: 'Raio' }, { id: 'drop', name: 'Gota' },
+  { id: 'moon', name: 'Lua' }, { id: 'cloud', name: 'Nuvem' },
+  { id: 'speech', name: 'Balão de fala' }, { id: 'flower', name: 'Flor' },
+  { id: 'spark', name: 'Brilho' }, { id: 'arch', name: 'Arco' }
 ];
 export function createShape(id, type = 'ellipse', overrides = {}) {
   return { id, type, x: 50, y: 50, width: 320, height: 320, rotation: 0, opacity: 100,
-    color: '#b3ff59', strokeColor: '#ffffff', strokeWidth: 0, shadow: false, visible: true, ...overrides };
+    color: '#b3ff59', strokeColor: '#ffffff', strokeWidth: 0, shadow: false, visible: true, fill: true, keepInside: true, flipX: false, flipY: false, ...overrides };
 }
 export function moveLayer(items, id, direction) {
   const next = [...items], index = next.findIndex(item => item.id === id);
@@ -70,7 +80,7 @@ export function createText(id, overrides = {}) {
     rotation: 0, opacity: 100, lineHeight: 1.15, outline: false, ...overrides };
 }
 export const initialState = {
-  version: 3, mode: 'templates', backgroundMode: 'auto', gradientAngle: 135, pattern: 'none', patternOpacity: 15,
+  version: 4, strokes: [], mode: 'templates', backgroundMode: 'auto', gradientAngle: 135, pattern: 'none', patternOpacity: 15,
   vignette: 0, grainAmount: 6.5, frameWidth: 0, frameColor: '#b3ff59', shapes: [], image: null, template: 'orbit', palette: 0, accent: '#b8a0ed', background: '#24232e',
   secondary: '#766591', highlight: '#eee9f5', resolution: '1920x1080', grain: true,
   intensity: 70, name: 'Meu novo universo', exportFormat: 'png', exportQuality: 92,
@@ -137,6 +147,7 @@ export function validateState(value) {
   }
   if (s.mode === 'blank' && !Array.isArray(value.texts) && typeof value.text !== 'string') s.texts = [];
   if (s.mode === 'blank' && s.backgroundMode === 'auto') s.backgroundMode = 'solid';
+  s.strokes = validateStrokes(value.strokes);
   if (Array.isArray(value.shapes)) {
     const ids = new Set();
     s.shapes = value.shapes.slice(0, MAX_SHAPES).filter(raw => raw && typeof raw === 'object').map((raw, i) => {
@@ -146,8 +157,8 @@ export function validateState(value) {
       const shape = createShape(id);
       if (shapeTypes.some(type => type.id === raw.type)) shape.type = raw.type;
       for (const key of ['color', 'strokeColor']) if (color(raw[key])) shape[key] = raw[key];
-      for (const key of ['visible', 'shadow']) if (typeof raw[key] === 'boolean') shape[key] = raw[key];
-      for (const [key, min, max] of [['x', 0, 100], ['y', 0, 100], ['width', 30, 1400], ['height', 30, 1000], ['rotation', -180, 180], ['opacity', 0, 100], ['strokeWidth', 0, 24]]) shape[key] = bounded(raw[key], min, max, shape[key]);
+      for (const key of ['visible', 'shadow', 'fill', 'keepInside', 'flipX', 'flipY']) if (typeof raw[key] === 'boolean') shape[key] = raw[key];
+      for (const [key, min, max] of [['x', 0, 100], ['y', 0, 100], ['width', 1, 4000], ['height', 1, 2160], ['rotation', -180, 180], ['opacity', 0, 100], ['strokeWidth', 0, 240]]) shape[key] = bounded(raw[key], min, max, shape[key]);
       return shape;
     });
   }
@@ -187,11 +198,11 @@ export function getShapeLayouts(state, W, H) {
     let width = shape.width, height = shape.height;
     const extent = () => [Math.abs(Math.cos(angle)) * width + Math.abs(Math.sin(angle)) * height, Math.abs(Math.sin(angle)) * width + Math.abs(Math.cos(angle)) * height];
     let [bw, bh] = extent();
-    const scale = Math.min(1, W * .94 / bw, H * .94 / bh);
+    const scale = shape.keepInside ? Math.min(1, W * .94 / bw, H * .94 / bh) : 1;
     width *= scale; height *= scale; [bw, bh] = extent();
     return { kind: 'shape', item: shape, width, height, angle,
-      x: Math.min(W - bw / 2 - 10, Math.max(bw / 2 + 10, shape.x / 100 * W)),
-      y: Math.min(H - bh / 2 - 10, Math.max(bh / 2 + 10, shape.y / 100 * H)) };
+      x: shape.keepInside ? Math.min(W - bw / 2 - 10, Math.max(bw / 2 + 10, shape.x / 100 * W)) : shape.x / 100 * W,
+      y: shape.keepInside ? Math.min(H - bh / 2 - 10, Math.max(bh / 2 + 10, shape.y / 100 * H)) : shape.y / 100 * H };
   });
 }
 const imageCache = new Map();
@@ -220,7 +231,8 @@ function drawImageLayer(ctx, image, W, H) {
   ctx.save(); ctx.globalAlpha = image.opacity / 100;
   ctx.drawImage(element, (W - w) * image.x / 100, (H - h) * image.y / 100, w, h); ctx.restore();
 }
-function shapePath(ctx, type, w, h) {
+export function shapePath(ctx, type, w, h) {
+  const polygon = points => { points.forEach(([x,y], i) => i ? ctx.lineTo(x*w,y*h) : ctx.moveTo(x*w,y*h)); ctx.closePath(); };
   ctx.beginPath();
   if (type === 'ellipse' || type === 'ring') {
     ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
@@ -228,7 +240,24 @@ function shapePath(ctx, type, w, h) {
   } else if (type === 'triangle') { ctx.moveTo(0, -h / 2); ctx.lineTo(w / 2, h / 2); ctx.lineTo(-w / 2, h / 2); ctx.closePath(); }
   else if (type === 'star') {
     for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .22 : .5; const x = Math.cos(a) * w * r, y = Math.sin(a) * h * r; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath();
-  } else if (type === 'pill') ctx.roundRect(-w / 2, -h / 2, w, h, Math.min(w, h) / 3);
+  } else if (['pentagon', 'hexagon', 'octagon'].includes(type)) {
+    const sides = {pentagon:5,hexagon:6,octagon:8}[type];
+    polygon(Array.from({length:sides},(_,i)=>{const a=-Math.PI/2+i*Math.PI*2/sides;return [Math.cos(a)*.5,Math.sin(a)*.5];}));
+  } else if (type === 'diamond') polygon([[0,-.5],[.5,0],[0,.5],[-.5,0]]);
+  else if (type === 'heart') {ctx.moveTo(0,h*.5);ctx.bezierCurveTo(-w*.85,0,-w*.45,-h*.8,0,-h*.25);ctx.bezierCurveTo(w*.45,-h*.8,w*.85,0,0,h*.5);ctx.closePath();}
+  else if (type === 'arrow' || type === 'arrowLeft') {const d=type==='arrow'?1:-1;polygon([[-.5*d,-.2],[.05*d,-.2],[.05*d,-.5],[.5*d,0],[.05*d,.5],[.05*d,.2],[-.5*d,.2]]);}
+  else if (type === 'chevron') polygon([[-.5,-.5],[0,-.5],[.5,0],[0,.5],[-.5,.5],[0,0]]);
+  else if (type === 'line') {ctx.moveTo(-w/2,-h/2);ctx.lineTo(w/2,h/2);}
+  else if (type === 'cross') polygon([[-.17,-.5],[.17,-.5],[.17,-.17],[.5,-.17],[.5,.17],[.17,.17],[.17,.5],[-.17,.5],[-.17,.17],[-.5,.17],[-.5,-.17],[-.17,-.17]]);
+  else if (type === 'bolt') polygon([[0,-.5],[-.45,.05],[-.05,.05],[-.2,.5],[.45,-.15],[.08,-.15],[.25,-.5]]);
+  else if (type === 'drop') {ctx.moveTo(0,-h/2);ctx.bezierCurveTo(w*.1,-h*.2,w*.48,0,w*.42,h*.2);ctx.bezierCurveTo(w*.3,h*.6,-w*.3,h*.6,-w*.42,h*.2);ctx.bezierCurveTo(-w*.48,0,-w*.1,-h*.2,0,-h/2);ctx.closePath();}
+  else if (type === 'moon') {ctx.moveTo(w*.25,-h*.45);ctx.bezierCurveTo(-w*.75,-h*.65,-w*.75,h*.65,w*.25,h*.45);ctx.bezierCurveTo(-w*.2,h*.3,-w*.2,-h*.3,w*.25,-h*.45);ctx.closePath();}
+  else if (type === 'cloud') {ctx.moveTo(-w*.3,h*.35);ctx.bezierCurveTo(-w*.6,h*.35,-w*.6,-h*.15,-w*.3,-h*.12);ctx.bezierCurveTo(-w*.35,-h*.65,w*.2,-h*.65,w*.26,-h*.2);ctx.bezierCurveTo(w*.58,-h*.3,w*.65,h*.35,w*.3,h*.35);ctx.closePath();}
+  else if (type === 'speech') {ctx.moveTo(-w*.5,-h*.45);ctx.lineTo(w*.5,-h*.45);ctx.lineTo(w*.5,h*.25);ctx.lineTo(-w*.1,h*.25);ctx.lineTo(-w*.38,h*.5);ctx.lineTo(-w*.3,h*.25);ctx.lineTo(-w*.5,h*.25);ctx.closePath();}
+  else if (type === 'flower') {polygon(Array.from({length:96},(_,i)=>{const a=i*Math.PI*2/96,r=.36+.14*Math.cos(a*6);return [Math.cos(a)*r,Math.sin(a)*r];}));}
+  else if (type === 'spark') {polygon([[0,-.5],[.12,-.12],[.5,0],[.12,.12],[0,.5],[-.12,.12],[-.5,0],[-.12,-.12]]);}
+  else if (type === 'arch') {ctx.moveTo(-w/2,h/2);ctx.lineTo(-w/2,0);ctx.bezierCurveTo(-w/2,-h*.67,w/2,-h*.67,w/2,0);ctx.lineTo(w/2,h/2);ctx.closePath();}
+  else if (type === 'pill') ctx.roundRect(-w / 2, -h / 2, w, h, Math.min(w, h) / 3);
   else ctx.rect(-w / 2, -h / 2, w, h);
 }
 function drawBackdrop(ctx, state, W, H) {
@@ -263,7 +292,7 @@ function noiseTexture() {
   for (let i = 0; i < img.data.length; i += 4) { seed = (seed * 16807) % 2147483647; img.data[i] = img.data[i + 1] = img.data[i + 2] = seed % 255; img.data[i + 3] = 255; }
   ctx.putImageData(img, 0, 0); return noise;
 }
-export function render(canvas, state, { thumbnail = false } = {}) {
+export function render(canvas, state, { thumbnail = false, draftStroke, draftShape } = {}) {
   const ctx = canvas.getContext('2d');
   const p = { accent: state.accent, dark: state.background, second: state.secondary, light: state.highlight };
   const H = 1080, W = H * canvas.width / canvas.height, strength = state.intensity / 100;
@@ -346,16 +375,17 @@ export function render(canvas, state, { thumbnail = false } = {}) {
     ctx.save(); const g = ctx.createRadialGradient(W/2,H/2,H*.15,W/2,H/2,Math.hypot(W,H)/2); g.addColorStop(0,'transparent');g.addColorStop(1,`rgba(0,0,0,${state.vignette/100})`);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.restore();
   }
   if (state.grain && !thumbnail) { ctx.save(); ctx.globalAlpha = state.grainAmount / 100; ctx.fillStyle = ctx.createPattern(noiseTexture(), 'repeat'); ctx.fillRect(0, 0, W, H); ctx.restore(); }
-  const shapeLayouts = thumbnail ? [] : getShapeLayouts(state, W, H);
+  const shapeLayouts = thumbnail ? [] : getShapeLayouts(draftShape ? { ...state, shapes: [...state.shapes, draftShape] } : state, W, H);
   for (const box of shapeLayouts) {
     const shape = box.item;
-    ctx.save(); ctx.translate(box.x,box.y);ctx.rotate(box.angle);ctx.globalAlpha=shape.opacity/100;
+    ctx.save(); ctx.translate(box.x,box.y);ctx.rotate(box.angle);ctx.scale(shape.flipX?-1:1,shape.flipY?-1:1);ctx.globalAlpha=shape.opacity/100;
     if (shape.shadow) {ctx.shadowColor='#00000066';ctx.shadowBlur=24;ctx.shadowOffsetY=10;}
-    ctx.fillStyle=shape.color;shapePath(ctx,shape.type,box.width,box.height);ctx.fill();
+    ctx.fillStyle=shape.color;shapePath(ctx,shape.type,box.width,box.height);if (shape.fill && shape.type !== 'line') ctx.fill();
     ctx.shadowColor='transparent';
-    if (shape.strokeWidth) {ctx.strokeStyle=shape.strokeColor;ctx.lineWidth=shape.strokeWidth;ctx.stroke();}
+    if (shape.strokeWidth || shape.type === 'line' || !shape.fill) {ctx.strokeStyle=shape.type === 'line' && !shape.strokeWidth ? shape.color : shape.strokeColor;ctx.lineWidth=shape.strokeWidth || 3;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();}
     ctx.restore();
   }
+  if (!thumbnail) renderInk(ctx, state.strokes, canvas.width, canvas.height, draftStroke);
   const layouts = thumbnail ? [] : getTextLayouts(ctx, state, W, H);
   for (const box of layouts) {
     const { t, lines, size, width, height, angle, x, y, font } = box;

@@ -36,10 +36,10 @@ test('arquivos incompatíveis e imagens externas são rejeitados antes de editar
   assert.equal(validateState({image:{src:'javascript:alert(1)'}}).image,null);
 });
 test('limita formas e normaliza valores importados', () => {
-  const project=validateState({...blankState(),shapes:Array.from({length:40},()=>({id:'same',type:'wrong',width:99999,height:-50,strokeWidth:100,rotation:Infinity,opacity:-5}))});
+  const project=validateState({...blankState(),shapes:Array.from({length:MAX_SHAPES+10},()=>({id:'same',type:'wrong',width:99999,height:-50,strokeWidth:100,rotation:Infinity,opacity:-5}))});
   assert.equal(project.shapes.length,MAX_SHAPES);assert.equal(new Set(project.shapes.map(s=>s.id)).size,MAX_SHAPES);
-  assert.equal(project.shapes[0].type,'ellipse');assert.equal(project.shapes[0].width,1400);assert.equal(project.shapes[0].height,30);
-  assert.equal(project.shapes[0].strokeWidth,24);assert.equal(project.shapes[0].rotation,0);assert.equal(project.shapes[0].opacity,0);
+  assert.equal(project.shapes[0].type,'ellipse');assert.equal(project.shapes[0].width,4000);assert.equal(project.shapes[0].height,1);
+  assert.equal(project.shapes[0].strokeWidth,100);assert.equal(project.shapes[0].rotation,0);assert.equal(project.shapes[0].opacity,0);
 });
 test('ordenação de camadas não altera o estado anterior e respeita as bordas', () => {
   const layers=[{id:'a'},{id:'b'},{id:'c'}];
