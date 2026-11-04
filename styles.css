@@ -455,3 +455,17 @@ body.editor-expanded main { max-width: none; padding: 0; }
 @media (max-width: 900px) {
   .workspace > .canvas-wrap, .is-expanded .workspace > .canvas-wrap { width: 100%; }
 }
+
+/* Material illustrations remain sharp without emoji or external icon fonts. */
+.tool-icon { display: block; width: 34px; height: 34px; flex-shrink: 0; pointer-events: none; }
+.drawing-tools button { display: grid; grid-template-columns: 34px minmax(0,1fr); align-items: center; gap: 12px; min-height: 96px; }
+.tool-copy { display: block; min-width: 0; }
+.tool-name { display: block; }
+.board-toolbar button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.board-toolbar .tool-icon { width: 20px; height: 20px; }
+@media (max-width: 560px) {
+  .drawing-tools button { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 126px; }
+  .drawing-tools button .tool-copy { width: 100%; }
+  .drawing-tools button[data-brush=shape] { flex-direction: row; align-items: center; min-height: 88px; }
+  .drawing-tools button[data-brush=shape] .tool-copy { width: auto; flex: 1; }
+}
