@@ -272,6 +272,11 @@ function travel(undo) {
 $('undo').addEventListener('click', () => travel(true));
 $('redo').addEventListener('click', () => travel(false));
 document.addEventListener('keydown', e => {
+  if (document.getElementById('page-editor')?.hidden) {
+    // Native undo can otherwise reach the last focused, now-hidden text field.
+    if ((e.ctrlKey || e.metaKey) && ['z', 'y'].includes(e.key.toLowerCase())) e.preventDefault();
+    return;
+  }
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); travel(!e.shiftKey); }
 });
@@ -687,6 +692,7 @@ $('shape-search').addEventListener('input', event => {
   $('shape-search-empty').hidden = !!matches;
 });
 document.addEventListener('keydown', event => {
+  if (document.getElementById('page-editor')?.hidden) return;
   if (event.key === 'Escape' && paintGesture) { event.preventDefault(); cancelPaint(); return; }
   if (event.key === 'Escape' && expandedEditor) { event.preventDefault(); toggleExpandedEditor(); return; }
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || event.ctrlKey || event.metaKey || event.altKey) return;

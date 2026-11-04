@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const root = fileURLToPath(new URL('.', import.meta.url));
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml' };
-const files = new Set(['index.html', 'styles.css', 'app.js', 'wallpaper.js', 'project.js', 'drawing.js']);
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
+const files = new Set(['index.html', 'styles.css', 'app.js', 'wallpaper.js', 'project.js', 'drawing.js', 'navigation.js', 'branding.css', 'assets/favicon.svg', 'assets/fonts/space-grotesk-latin.woff2', 'assets/fonts/manrope-latin.woff2']);
 http.createServer(async (req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (!files.has(name)) { res.writeHead(404); res.end('Não encontrado'); return; }

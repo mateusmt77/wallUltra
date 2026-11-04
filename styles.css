@@ -304,7 +304,7 @@ body { background-image: radial-gradient(ellipse at 90% 0%, #f3d9ff 0, transpare
 .hero-secondary { background: #ffffff0c; border-color: #ad88d0; color: #fff; min-height: 50px; font-size: 15px; }.hero-secondary:hover:not(:disabled) { background: #ffffff1a; border-color: #fff; }
 .hero-footnote { font-size: 12px; color: #d1b8ec; }
 .hero-art { min-width: 0; position: relative; }
-.hero-art svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 14px 22px #12032133); }
+.hero-art > svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 14px 22px #12032133); }
 .art-caption { display: block; text-align: center; margin-top: 4px; font-size: 10px; letter-spacing: 2px; color: #d7b8f4; }
 .creation-nav { display: flex; align-items: center; gap: 14px; padding: 22px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .creation-nav button { display: flex; align-items: center; gap: 15px; text-align: left; min-height: 76px; padding: 14px 20px; background: var(--cream); border: 1px solid var(--line); color: var(--ink); border-radius: 12px; font-size: 16px; font-weight: 600; }

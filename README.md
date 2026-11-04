@@ -16,6 +16,18 @@ Abra `http://localhost:3000`. Para outra porta, use `PORT=4000 npm start`.
 
 Se você já tem o projeto, atualize com `git pull origin main` e reinicie o servidor.
 
+## Conheça a plataforma
+
+O menu principal tem **Criar wallpaper** e **Sobre a plataforma**. A página Sobre (`http://localhost:3000/#sobre`) apresenta o WallUltra, explica as opções de criação e tem um passo a passo, acesso direto às sete categorias de ferramentas e perguntas frequentes sobre salvamento, fotos, borracha e exportação.
+
+Os links `#como-funciona` e `#perguntas-frequentes` também podem ser abertos diretamente. A navegação funciona com os botões Voltar/Avançar do navegador. O editor continua aberto em memória ao visitar a página Sobre: textos, formas, traços e alterações ainda não salvas são preservados ao voltar. Recarregar ou fechar a página ainda exige salvar o projeto antes.
+
+## Identidade visual
+
+A interface combina azul elétrico, coral, amarelo e verde-lima, com marca, favicon e ilustrações vetoriais próprios. **Space Grotesk** é usada nos títulos e **Manrope** nos textos e controles. As duas fontes variáveis são servidas pelo próprio projeto, em WOFF2, sem chamadas a serviços de fontes externos. A interface acompanha o tema claro ou escuro do sistema.
+
+As fontes são distribuídas sob **SIL Open Font License 1.1**. Licenças, versões e verificações de integridade estão em [assets/fonts](assets/fonts/SOURCES.md). As fontes da identidade da interface não mudam a tipografia escolhida dentro de cada wallpaper.
+
 ## Dois espaços para criar
 
 - **Explorar estilos:** comece com uma das oito composições prontas e personalize cada detalhe.
@@ -23,7 +35,7 @@ Se você já tem o projeto, atualize com `git pull origin main` e reinicie o ser
 
 As abas acima do editor guardam rascunhos independentes durante a sessão. Alternar entre elas não apaga a outra criação, e cada espaço mantém seu próprio histórico. “Limpar tela” no espaço livre pode ser desfeito. Use “Salvar projeto” antes de fechar o navegador para persistir os dois rascunhos.
 
-A página inicial tem uma identidade visual com roxo, rosa e verde vibrantes e uma colagem vetorial própria, sem dependências externas.
+A página inicial usa blocos de cor vibrantes, uma colagem vetorial e atalhos para os dois modos de criação e para a apresentação da plataforma.
 
 ## Ferramentas de edição
 
