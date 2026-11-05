@@ -1,3 +1,4 @@
+import { SHAPE_LIMITS } from './shape-edit.js';
 import { validateStrokes, renderInk } from './drawing.js';
 export const palettes = [
   { name: 'Lavanda', accent: '#b8a0ed', dark: '#24232e', light: '#eee9f5', second: '#766591' },
@@ -66,7 +67,7 @@ export const shapeTypes = [
 ];
 export function createShape(id, type = 'ellipse', overrides = {}) {
   return { id, type, x: 50, y: 50, width: 320, height: 320, rotation: 0, opacity: 100,
-    color: '#b3ff59', strokeColor: '#ffffff', strokeWidth: 0, shadow: false, visible: true, fill: true, keepInside: true, flipX: false, flipY: false, ...overrides };
+    color: '#b3ff59', strokeColor: '#ffffff', strokeWidth: 0, shadow: false, visible: true, fill: true, keepInside: false, flipX: false, flipY: false, ...overrides };
 }
 export function moveLayer(items, id, direction) {
   const next = [...items], index = next.findIndex(item => item.id === id);
@@ -80,7 +81,7 @@ export function createText(id, overrides = {}) {
     rotation: 0, opacity: 100, lineHeight: 1.15, outline: false, ...overrides };
 }
 export const initialState = {
-  version: 4, strokes: [], mode: 'templates', backgroundMode: 'auto', gradientAngle: 135, pattern: 'none', patternOpacity: 15,
+  version: 5, strokes: [], mode: 'templates', backgroundMode: 'auto', gradientAngle: 135, pattern: 'none', patternOpacity: 15,
   vignette: 0, grainAmount: 6.5, frameWidth: 0, frameColor: '#b3ff59', shapes: [], image: null, template: 'orbit', palette: 0, accent: '#b8a0ed', background: '#24232e',
   secondary: '#766591', highlight: '#eee9f5', resolution: '1920x1080', grain: true,
   intensity: 70, name: 'Meu novo universo', exportFormat: 'png', exportQuality: 92,
@@ -158,7 +159,7 @@ export function validateState(value) {
       if (shapeTypes.some(type => type.id === raw.type)) shape.type = raw.type;
       for (const key of ['color', 'strokeColor']) if (color(raw[key])) shape[key] = raw[key];
       for (const key of ['visible', 'shadow', 'fill', 'keepInside', 'flipX', 'flipY']) if (typeof raw[key] === 'boolean') shape[key] = raw[key];
-      for (const [key, min, max] of [['x', 0, 100], ['y', 0, 100], ['width', 1, 4000], ['height', 1, 2160], ['rotation', -180, 180], ['opacity', 0, 100], ['strokeWidth', 0, 240]]) shape[key] = bounded(raw[key], min, max, shape[key]);
+      for (const [key, min, max] of [['x', SHAPE_LIMITS.minPosition, SHAPE_LIMITS.maxPosition], ['y', SHAPE_LIMITS.minPosition, SHAPE_LIMITS.maxPosition], ['width', 1, 4000], ['height', 1, 2160], ['rotation', -180, 180], ['opacity', 0, 100], ['strokeWidth', 0, 240]]) shape[key] = bounded(raw[key], min, max, shape[key]);
       return shape;
     });
   }

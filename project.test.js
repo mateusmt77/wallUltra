@@ -49,7 +49,7 @@ test('ordenação de camadas não altera o estado anterior e respeita as bordas'
 });
 test('formas rotacionadas mantêm as proporções e cabem em monitores diferentes', () => {
   for (const W of [1440,1920,3840]) {
-    const [box]=getShapeLayouts({shapes:[createShape('a','rectangle',{width:1400,height:1000,x:0,y:100,rotation:45})]},W,1080);
+    const [box]=getShapeLayouts({shapes:[createShape('a','rectangle',{width:1400,height:1000,x:0,y:100,rotation:45,keepInside:true})]},W,1080);
     const bw=Math.abs(Math.cos(box.angle))*box.width+Math.abs(Math.sin(box.angle))*box.height;
     const bh=Math.abs(Math.sin(box.angle))*box.width+Math.abs(Math.cos(box.angle))*box.height;
     assert.ok(box.x-bw/2>=0&&box.x+bw/2<=W);assert.ok(box.y-bh/2>=0&&box.y+bh/2<=1080);

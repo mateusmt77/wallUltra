@@ -1,6 +1,7 @@
 import { palettes, templates, resolutions, fonts, MAX_TEXTS, initialState, createText, blankState, createShape, shapeTypes, MAX_SHAPES, moveLayer, prepareImage, shapePath, render } from './wallpaper.js';
 import { loadWorkspaces, parseProject, serializeProject, normalizeImageFile } from './project.js';
 import { MAX_STROKES, MAX_STROKE_POINTS, MAX_DRAWING_POINTS, drawingPoint } from './drawing.js';
+import { SHAPE_LIMITS, shapeHandles, hitShapeHandle, beginShapeTransform, transformShape, drawShapeControls } from './shape-edit.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('wallpaper');
@@ -84,11 +85,14 @@ function draw() {
   const box = !paintGesture && showSelection && layouts.find(b => b.kind === selectionKind && b.item.id === (selectionKind === 'text' ? selectedId : selectedShapeId));
   if (!box) return;
   const ctx = canvas.getContext('2d');
-  ctx.save();
-  const scale = canvas.height / 1080;
-  ctx.scale(scale, scale); ctx.translate(box.x, box.y); ctx.rotate(box.angle);
-  ctx.strokeStyle = '#bfa4ee'; ctx.lineWidth = 2 / scale; ctx.setLineDash([6 / scale, 4 / scale]);
-  ctx.strokeRect(-box.width / 2 - 8, -box.height / 2 - 8, box.width + 16, box.height + 16);
+  const metrics = canvasMetrics();
+  ctx.save(); ctx.scale(canvas.height / 1080, canvas.height / 1080);
+  if (box.kind === 'shape') drawShapeControls(ctx, box, metrics.W, metrics.H, metrics.viewScale);
+  else {
+    ctx.translate(box.x, box.y); ctx.rotate(box.angle); ctx.strokeStyle = '#bfa4ee';
+    ctx.lineWidth = 2 / metrics.viewScale; ctx.setLineDash([6 / metrics.viewScale, 4 / metrics.viewScale]);
+    ctx.strokeRect(-box.width / 2 - 8, -box.height / 2 - 8, box.width + 16, box.height + 16);
+  }
   ctx.restore();
 }
 function sync() {
@@ -263,6 +267,7 @@ document.querySelectorAll('[data-style]').forEach(b => b.addEventListener('click
 
 function travel(undo) {
   if (paintGesture) { cancelPaint(); return; }
+  if (drag) { cancelObjectDrag(); return; }
   finishEdit();
   const source = undo ? history : future, target = undo ? future : history;
   if (!source.length) return;
@@ -277,6 +282,7 @@ document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && ['z', 'y'].includes(e.key.toLowerCase())) e.preventDefault();
     return;
   }
+  if (e.key === 'Escape' && drag) { e.preventDefault(); cancelObjectDrag(); return; }
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); travel(!e.shiftKey); }
 });
@@ -284,44 +290,85 @@ function point(event) {
   const rect = canvas.getBoundingClientRect();
   return { x: (event.clientX - rect.left) / rect.width * (1080 * canvas.width / canvas.height), y: (event.clientY - rect.top) / rect.height * 1080 };
 }
+function canvasMetrics() {
+  return { W: 1080 * canvas.width / canvas.height, H: 1080,
+    viewScale: canvas.getBoundingClientRect().height / 1080 || canvas.height / 1080 };
+}
+function selectedShapeBox() {
+  return showSelection && selectionKind === 'shape' ? layouts.find(box => box.kind === 'shape' && box.item.id === selectedShapeId) : undefined;
+}
+function handleAt(p, event) {
+  const box = selectedShapeBox(); if (!box) return;
+  const { W, H, viewScale } = canvasMetrics();
+  return hitShapeHandle(shapeHandles(box, W, H, viewScale), p, viewScale, event.pointerType === 'touch');
+}
 canvas.addEventListener('pointerdown', e => {
   if (e.button !== 0 || !e.isPrimary) return;
   if (boardTool !== 'select') { startPaint(e); return; }
   finishEdit(); canvas.focus({ preventScroll: true }); const p = point(e);
+  const handle = handleAt(p, e);
   const hit = b => {
     const dx = p.x - b.x, dy = p.y - b.y;
     const x = dx * Math.cos(b.angle) + dy * Math.sin(b.angle), y = -dx * Math.sin(b.angle) + dy * Math.cos(b.angle);
     return Math.abs(x) < b.width / 2 + 12 && Math.abs(y) < b.height / 2 + 12 && b.item.opacity > 0;
   };
-  // The layer chosen in the controls keeps priority when texts overlap.
-  const box = layouts.find(b => b.kind === selectionKind && b.item.id === (selectionKind === 'text' ? selectedId : selectedShapeId) && hit(b)) || [...layouts].reverse().find(hit);
+  const box = handle ? selectedShapeBox() : layouts.find(b => b.kind === selectionKind && b.item.id === (selectionKind === 'text' ? selectedId : selectedShapeId) && hit(b)) || [...layouts].reverse().find(hit);
   if (!box) { showSelection = false; draw(); return; }
   selectionKind = box.kind;
   if (box.kind === 'text') selectedId = box.item.id; else selectedShapeId = box.item.id;
   showSelection = true; activateTool(box.kind === 'text' ? 'texts' : 'elements');
-  drag = { before: state, start: p, x: box.x, y: box.y, pointerId: e.pointerId };
+  const { W, H, viewScale } = canvasMetrics();
+  drag = { before: state, start: p, x: box.x, y: box.y, box, kind: box.kind, id: box.item.id, pointerId: e.pointerId,
+    transform: handle ? beginShapeTransform(box.item, box, p, handle, W, H, viewScale) : undefined };
+  canvas.style.cursor = handle?.cursor || 'grabbing';
   canvas.setPointerCapture(e.pointerId); canvas.classList.add('dragging'); e.preventDefault(); sync();
 });
+function moveObject(e) {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  const p = point(e), { W, H } = canvasMetrics();
+  if (Math.hypot(p.x - drag.start.x, p.y - drag.start.y) < .001) return;
+  const key = drag.kind === 'text' ? 'texts' : 'shapes';
+  let patch;
+  if (drag.transform) patch = transformShape(drag.transform, p, e.shiftKey);
+  else {
+    const min = drag.kind === 'shape' ? SHAPE_LIMITS.minPosition : 0, max = drag.kind === 'shape' ? SHAPE_LIMITS.maxPosition : 100;
+    patch = { x: Math.min(max, Math.max(min, (drag.x + p.x - drag.start.x) / W * 100)),
+      y: Math.min(max, Math.max(min, (drag.y + p.y - drag.start.y) / H * 100)) };
+    if (drag.kind === 'shape') Object.assign(patch, { width: drag.box.width, height: drag.box.height, keepInside: false });
+  }
+  state = { ...state, [key]: state[key].map(item => item.id === drag.id ? { ...item, ...patch } : item) }; sync();
+}
 canvas.addEventListener('pointermove', e => {
   updateBrushCursor(e);
   if (paintGesture) { movePaint(e); return; }
-  if (!drag || e.pointerId !== drag.pointerId) return;
-  const p = point(e), W = 1080 * canvas.width / canvas.height;
-  const x = Math.min(100, Math.max(0, (drag.x + p.x - drag.start.x) / W * 100));
-  const y = Math.min(100, Math.max(0, (drag.y + p.y - drag.start.y) / 1080 * 100));
-  const key = selectionKind === 'text' ? 'texts' : 'shapes';
-  const id = selectionKind === 'text' ? selectedId : selectedShapeId;
-  state = { ...state, [key]: state[key].map(item => item.id === id ? { ...item, x, y } : item) }; sync();
+  if (drag) { moveObject(e); return; }
+  if (boardTool === 'select') canvas.style.cursor = handleAt(point(e), e)?.cursor || '';
 });
+function releaseObjectDrag() {
+  const previous = drag; drag = undefined;
+  canvas.classList.remove('dragging'); canvas.style.cursor = '';
+  if (previous && canvas.hasPointerCapture(previous.pointerId)) canvas.releasePointerCapture(previous.pointerId);
+  return previous;
+}
+function cancelObjectDrag() {
+  const previous = releaseObjectDrag(); if (!previous) return;
+  state = previous.before; sync();
+}
 function finishDrag(e) {
   if (paintGesture) { finishPaint(e); return; }
   if (!drag || e.pointerId !== drag.pointerId) return;
-  const before = drag.before; drag = undefined;
-  canvas.classList.remove('dragging'); remember(before); sync();
+  moveObject(e);
+  const previous = releaseObjectDrag(); remember(previous.before); sync();
 }
 canvas.addEventListener('pointerup', finishDrag);
-canvas.addEventListener('pointercancel', e => { if (paintGesture && e.pointerId === paintGesture.pointerId) cancelPaint(); else if (!paintGesture) finishDrag(e); });
-canvas.addEventListener('lostpointercapture', e => { if (paintGesture && e.pointerId === paintGesture.pointerId) cancelPaint(); else if (!paintGesture) finishDrag(e); });
+canvas.addEventListener('pointercancel', e => {
+  if (paintGesture && e.pointerId === paintGesture.pointerId) cancelPaint();
+  else if (drag && e.pointerId === drag.pointerId) cancelObjectDrag();
+});
+canvas.addEventListener('lostpointercapture', e => {
+  if (paintGesture && e.pointerId === paintGesture.pointerId) cancelPaint();
+  else if (drag && e.pointerId === drag.pointerId) cancelObjectDrag();
+});
 canvas.addEventListener('pointerleave', () => { $('brush-cursor').hidden = true; });
 $('shuffle').addEventListener('click', () => {
   const template = templates[Math.floor(Math.random() * templates.length)];
@@ -332,7 +379,7 @@ $('shuffle').addEventListener('click', () => {
 $('save').addEventListener('click', () => {
   finishEdit();
   try { workspaces[state.mode].state = state;
-    localStorage.setItem('wallultra-project', JSON.stringify({ app: 'wallultra-workspaces', version: 4, activeMode: state.mode, projects: { templates: workspaces.templates.state, blank: workspaces.blank.state } })); $('save-status').textContent = 'SALVO'; toast('Seus dois espaços de criação foram salvos neste navegador.'); }
+    localStorage.setItem('wallultra-project', JSON.stringify({ app: 'wallultra-workspaces', version: 5, activeMode: state.mode, projects: { templates: workspaces.templates.state, blank: workspaces.blank.state } })); $('save-status').textContent = 'SALVO'; toast('Seus dois espaços de criação foram salvos neste navegador.'); }
   catch { toast('O armazenamento está cheio ou bloqueado. Use “Baixar projeto” para guardar sua criação em um arquivo.'); }
 });
 $('download').addEventListener('click', async () => {
@@ -411,6 +458,7 @@ shapeTypes.forEach(type => {
   button.append(symbol, label); button.addEventListener('click', () => addShape(type.id)); $('shape-library').append(button);
 });
 $('shape-layer').addEventListener('change', event => { finishEdit(); setBoardTool('select', false); selectedShapeId = event.target.value; selectionKind = 'shape'; showSelection = true; sync(); });
+$('shape-center').addEventListener('click', () => patchShape({ x: 50, y: 50 }));
 $('shape-type').addEventListener('change', event => patchShape({ type: event.target.value }));
 $('duplicate-shape').addEventListener('click', () => {
   finishEdit(); const source = currentShape(); if (!source || state.shapes.length >= MAX_SHAPES) return;
@@ -467,7 +515,7 @@ function syncExtended() {
   if (shape) {
     for (const key of ['type', 'color', 'strokeColor', 'strokeWidth', 'width', 'height', 'x', 'y', 'rotation', 'opacity']) setValue('shape-' + key, shape[key]);
     for (const key of ['visible', 'shadow', 'fill', 'keepInside']) $('shape-' + key).checked = shape[key];
-    for (const [key, suffix] of [['strokeWidth', ' px'], ['width', ' px'], ['height', ' px'], ['x', '%'], ['y', '%'], ['rotation', '°'], ['opacity', '%']]) $('shape-' + key + '-value').textContent = Math.round(shape[key]) + suffix;
+    for (const [key, suffix] of [['strokeWidth', ' px'], ['width', ' px'], ['height', ' px'], ['x', '%'], ['y', '%'], ['rotation', '°'], ['opacity', '%']]) $('shape-' + key + '-value').textContent = (key === 'strokeWidth' ? Number(shape[key].toFixed(1)) : Math.round(shape[key])) + suffix;
   }
   for (const [prefix, collection, id] of [['shape', 'shapes', selectedShapeId], ['text', 'texts', selectedId]]) {
     const index = state[collection].findIndex(item => item.id === id);
@@ -535,6 +583,8 @@ const inkColors = [
 function currentBrush() { return brushSettings[boardTool] || brushSettings[lastInkTool]; }
 function setBoardTool(tool, openPanel = true) {
   if (paintGesture) cancelPaint();
+  if (drag) cancelObjectDrag();
+  canvas.style.cursor = '';
   if (!(tool === 'select' || tool in brushSettings)) return;
   boardTool = tool;
   if (['pencil', 'pen', 'brush', 'marker'].includes(tool)) lastInkTool = tool;
@@ -551,7 +601,7 @@ function syncDrawingUI() {
     $(id).classList.toggle('active', active); $(id).setAttribute('aria-pressed', String(active));
   }
   $('selection-hint').textContent = selecting ? 'Arraste textos e formas para posicionar' : erasing ? 'Apaga apenas os traços livres' : shaping ? 'Arraste para definir o tamanho' : 'Desenhe com mouse, toque ou caneta';
-  $('board-status').textContent = selecting ? 'Selecione e arraste textos ou formas. Desenho livre: use a aba Desenho.' : shaping ? 'Arraste para criar uma forma. Shift mantém largura e altura iguais. Esc cancela.' : `${toolNames[boardTool]} ativo · desenhe na tela. Esc cancela o gesto; Ctrl/Cmd + Z desfaz.`;
+  $('board-status').textContent = selecting ? (selectionKind === 'shape' && showSelection ? 'Arraste a forma para mover ou recortar nas bordas. Alças brancas: tamanho. Círculo amarelo: contorno. Shift mantém a proporção.' : 'Selecione e arraste textos ou formas. Desenho livre: use a aba Desenho.') : shaping ? 'Arraste para criar uma forma. Shift mantém largura e altura iguais. Esc cancela.' : `${toolNames[boardTool]} ativo · desenhe na tela. Esc cancela o gesto; Ctrl/Cmd + Z desfaz.`;
   $('drawing-instructions').textContent = selecting ? 'Modo de seleção ativo. Escolha um material abaixo para desenhar, ou arraste textos e formas na prévia.' : erasing ? 'Passe a borracha sobre os traços livres. O fundo, as imagens, as formas e os textos serão preservados.' : shaping ? 'Clique ou arraste na prévia para desenhar a forma escolhida. Volte a Selecionar para movê-la depois.' : `${toolNames[boardTool]} ativo. Desenhe diretamente na prévia; cor, espessura e opacidade são lembradas para cada material durante a sessão.`;
   $('brush-controls').disabled = selecting;
   $('shape-draw-options').hidden = !shaping;
