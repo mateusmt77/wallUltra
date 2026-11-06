@@ -4,7 +4,7 @@ Estúdio de wallpapers personalizados para computador, em português. HTML, CSS 
 
 ## Executar localmente
 
-Requer Node.js 20 ou superior. Não é necessário executar `npm install`.
+Use Node.js 22 LTS (a versão principal está fixada em `package.json` para o Vercel). Não é necessário executar `npm install`.
 
 ```sh
 git clone https://github.com/mateusmt77/wallUltra.git
@@ -180,7 +180,7 @@ Importação, histórico, salvamentos antigos e mudança de plano não descartam
 Não há checkout, preços, cobranças, renovação automática nem seletor público que conceda planos. Sem configuração, todos começam no Basic. Para testar ou conceder acesso durante esta fase:
 
 1. Copie `.env.example` para `.env` e preencha **segredos diferentes**, gerados por você: segredo de assinatura com pelo menos 32 caracteres e códigos de convite com pelo menos 16 caracteres.
-2. Execute com Node 20.6 ou superior: `node --env-file=.env server.mjs`. `npm start` também funciona quando as variáveis já são fornecidas pelo ambiente da hospedagem.
+2. Execute com Node 22: `node --env-file=.env server.mjs`. `npm start` também funciona quando as variáveis já são fornecidas pelo ambiente da hospedagem.
 3. No menu **Planos**, insira um dos códigos. O servidor concede Medium ou High neste navegador por **7 dias**, em cookie assinado `HttpOnly` e `SameSite=Strict`. Não guarde códigos em projetos, JavaScript público ou no Git. Não envie credenciais bancárias.
 4. Em produção, configure `NODE_ENV=production`, use HTTPS e informe `WALLULTRA_ORIGIN` com a origem pública exata (sem barra final), especialmente atrás de proxy reverso. Isso também habilita `Secure` no cookie.
 5. “Encerrar acesso neste navegador” retorna ao Basic. Para invalidar todas as sessões, troque o segredo e reinicie o servidor. Trocar somente um código impede novas ativações com ele, mas não revoga cookies já emitidos.
@@ -198,3 +198,32 @@ Benefícios de nuvem (100 MB/1 GB/5 GB), histórico por dias, fontes próprias, 
 ### Verificação dos planos
 
 `npm test` inclui política cumulativa, formatos, importação de recursos premium, migração dos efeitos, ativação por código, rejeição de cookie adulterado, ausência de configuração, origem externa, limite de tentativas e autorização da exportação. A interface foi verificada no Chromium com ativação de Basic/Medium/High, persistência, bloqueios, PNGs reais Full HD e 4K, imagem, favoritos, mudança de plano e diálogo responsivo.
+
+
+## Publicação no Vercel — correção 0.7.1
+
+O projeto tem dois ambientes: os arquivos do editor executados no navegador e as rotas de API executadas no servidor. `app.js` **não é a entrada de um servidor Node**. O deploy anterior o identificava como entrada principal, embora o log terminasse com “Deployment completed”.
+
+`vercel.json` define explicitamente o preset **Other** (`framework: null`), o build `npm run build` e a saída `public`. O build copia somente os 14 arquivos necessários à interface; arquivos `.env`, testes e código de servidor não são publicados como arquivos estáticos. Os três arquivos em `api/` exportam handlers Node para as rotas de consulta do plano, ativação e autorização. Eles reutilizam a política do servidor local sem abrir uma porta HTTP na função.
+
+### Configuração do projeto no painel
+
+1. Conecte o repositório e selecione a branch `main`. A **Root Directory** deve ser a raiz do repositório (onde estão `package.json` e `vercel.json`).
+2. Deixe o preset e o build seguirem `vercel.json`. Se houver configurações antigas no painel, desative overrides conflitantes: o resultado deve ser **Other**, Build Command **npm run build**, Output Directory **public** e Node.js **22.x**. Não use `npm start` como comando de build.
+3. O wallBasic funciona sem variáveis secretas. Para ativar Medium/High por código, configure `WALLULTRA_SESSION_SECRET` (mínimo 32 caracteres), `WALLULTRA_MEDIUM_CODE` e `WALLULTRA_HIGH_CODE` (mínimo 16 caracteres) nas variáveis de ambiente do Vercel. Use seus próprios valores, nunca os exemplos de testes.
+4. No Vercel, `WALLULTRA_ORIGIN` é opcional: por padrão, a API aceita a origem HTTPS do domínio que recebeu a requisição. Se você já configurou essa variável, ela deve coincidir exatamente com o domínio acessado, sem barra final. Use valores separados para Production e Preview, ou remova a variável para aceitar o domínio atual. Cabeçalhos arbitrários de proxy não alteram essa decisão no servidor local.
+5. Faça um novo deploy do commit corrigido. Alterações nas variáveis do painel só entram em vigor em um novo deploy.
+6. Verifique `/` (editor), `/api/membership` (JSON com o plano Basic, ou o plano ativado) e uma exportação Full HD. Se configurou os códigos, teste a ativação, a permanência após recarregar e “Encerrar acesso”. A sessão usa cookies `HttpOnly`, `SameSite=Strict` e `Secure` no Vercel.
+
+O aviso `npm warn Unknown env config "cache-dir"` mostrado no log vem da configuração do ambiente de instalação e não interrompeu aquele deploy. Fixar `engines.node` em `22.x` remove o aviso de atualização automática para futuras versões principais do Node.
+
+### Validação local do pacote publicado
+
+```sh
+npm run build
+npm test
+```
+
+Os testes de deploy verificam a lista de arquivos publicados, os três entrypoints, JSON já interpretado pelo runtime, cookies seguros, origem HTTPS atrás do proxy, limites do corpo e rejeição de pedidos inválidos. O servidor local continua com `npm start`; ele usa a mesma lista de arquivos públicos e a mesma política de planos. `public/` e `.vercel/` são gerados localmente e não são versionados.
+
+O controle de tentativas de códigos é mantido em memória **por instância**. Em funções serverless ele não é um limite global persistente, e pode reiniciar com uma nova instância. A ativação manual continua sendo um piloto; autenticação e controle de tentativas compartilhado são necessários antes da operação comercial.
