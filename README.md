@@ -18,7 +18,7 @@ Se você já tem o projeto, atualize com `git pull origin main` e reinicie o ser
 
 ## Conheça a plataforma
 
-O menu principal tem **Criar wallpaper** e **Sobre a plataforma**. A página Sobre (`http://localhost:3000/#sobre`) apresenta o WallUltra, explica as opções de criação e tem um passo a passo, acesso direto às sete categorias de ferramentas e perguntas frequentes sobre salvamento, fotos, borracha e exportação.
+O menu principal tem **Criar wallpaper**, **Sobre a plataforma** e **Planos**, que abre a comparação e a ativação manual de acesso. A página Sobre (`http://localhost:3000/#sobre`) apresenta o WallUltra, explica as opções de criação e tem um passo a passo, acesso direto às sete categorias de ferramentas e perguntas frequentes sobre salvamento, fotos, borracha e exportação.
 
 Os links `#como-funciona` e `#perguntas-frequentes` também podem ser abertos diretamente. A troca entre Criar wallpaper e Sobre a plataforma tem uma transição curta de saída e entrada, combinando deslocamento horizontal e transparência. Ela também funciona com Voltar/Avançar e com os atalhos da página Sobre. Cliques rápidos mantêm somente a última navegação solicitada. A preferência de movimento reduzido do sistema desativa o efeito. O editor continua aberto em memória ao visitar a página Sobre: textos, formas, traços e alterações ainda não salvas são preservados ao voltar. Recarregar ou fechar a página ainda exige salvar o projeto antes.
 
@@ -120,10 +120,11 @@ Use “Preencher a tela” para cobrir o fundo com recorte, ou “Mostrar imagem
 
 ## Formatos e exportação
 
-10 resoluções de desktop, com as proporções reais preservadas:
+11 resoluções de desktop, conforme o plano, com as proporções reais preservadas:
 
 | Resolução | Proporção | Uso |
 | --- | --- | --- |
+| 7680 × 4320 | 16:9 | 8K (wallHigh) |
 | 1920 × 1080 | 16:9 | Full HD |
 | 2560 × 1440 | 16:9 | Quad HD |
 | 3840 × 2160 | 16:9 | 4K |
@@ -159,4 +160,41 @@ Os testes do Node verificam traços, pressão, limites de pontos, migração da 
 
 ## Escopo
 
-Funciona inteiramente no navegador, sem contas, sincronização em nuvem ou geração por IA. Há importação local de imagens e transferência de projetos por arquivo. As composições prontas são desenhadas proceduralmente, sem imagens externas, fontes remotas ou serviços pagos. Não há necessidade de credenciais.
+O editor e os arquivos continuam processados no navegador. O servidor Node agora valida o acesso manual aos planos. Ainda não há contas de usuário, pagamentos, sincronização em nuvem ou geração por IA. Há importação local de imagens e transferência de projetos por arquivo. As composições prontas são desenhadas proceduralmente, sem imagens externas, fontes remotas ou serviços pagos. O wallBasic funciona sem credenciais; a ativação dos demais planos exige configuração do servidor descrita abaixo.
+
+
+## Planos sem pagamento — versão 0.7.0
+
+| Plano | Recursos disponíveis |
+| --- | --- |
+| wallBasic | Gratuito; todos os materiais de desenho; cores e fontes livres; imagens próprias; 8 formas essenciais; 4 estilos; PNG/JPEG/WebP até 1920 × 1200; biblioteca local de 3 projetos. |
+| wallMedium | Basic + 24 formas, 8 estilos, sombra/contorno em textos, gradiente de 3 cores (fundo/secundária/destaque), contraste e saturação, até 20 paletas favoritas locais, exportação até 4K e ultrawide de uma tela; biblioteca local de 25 projetos. |
+| wallHigh | Medium + mesclagem de imagem (multiply, screen, overlay, soft-light, difference), extração das cores mais frequentes de imagens, até 20 estilos de acabamento locais, pacote de 3 PNGs Full HD/QHD/4K, 8K e múltiplos monitores; biblioteca local de 100 projetos. |
+
+As ferramentas mostram o plano necessário e abrem a comparação ao tentar usar um recurso bloqueado. O acesso é cumulativo. Os limites técnicos de 32 textos, 100 formas e desenho existentes valem igualmente para todos. A biblioteca local é adicional aos dois rascunhos; o limite de armazenamento é o do navegador, não uma cota em GB. Ao atingir a cota de projetos, é possível excluir itens ou baixar o arquivo editável.
+
+Importação, histórico, salvamentos antigos e mudança de plano não descartam conteúdo. Uma criação que usa recursos superiores continua visível, editável e pode ser baixada como projeto; sua imagem final exige o plano correspondente. “Adaptar criação ao meu plano” remove os efeitos indisponíveis, converte formas avançadas em retângulos e escolhe resolução compatível. A adaptação pode ser desfeita. Projetos importantes devem ter uma cópia baixada antes de qualquer alteração.
+
+### Ativação manual pelo responsável
+
+Não há checkout, preços, cobranças, renovação automática nem seletor público que conceda planos. Sem configuração, todos começam no Basic. Para testar ou conceder acesso durante esta fase:
+
+1. Copie `.env.example` para `.env` e preencha **segredos diferentes**, gerados por você: segredo de assinatura com pelo menos 32 caracteres e códigos de convite com pelo menos 16 caracteres.
+2. Execute com Node 20.6 ou superior: `node --env-file=.env server.mjs`. `npm start` também funciona quando as variáveis já são fornecidas pelo ambiente da hospedagem.
+3. No menu **Planos**, insira um dos códigos. O servidor concede Medium ou High neste navegador por **7 dias**, em cookie assinado `HttpOnly` e `SameSite=Strict`. Não guarde códigos em projetos, JavaScript público ou no Git. Não envie credenciais bancárias.
+4. Em produção, configure `NODE_ENV=production`, use HTTPS e informe `WALLULTRA_ORIGIN` com a origem pública exata (sem barra final), especialmente atrás de proxy reverso. Isso também habilita `Secure` no cookie.
+5. “Encerrar acesso neste navegador” retorna ao Basic. Para invalidar todas as sessões, troque o segredo e reinicie o servidor. Trocar somente um código impede novas ativações com ele, mas não revoga cookies já emitidos.
+
+Os códigos são convites compartilhados para este piloto, não assinaturas ou contas individuais. Qualquer pessoa com um código válido pode ativá-lo. A API limita tentativas por endereço da conexão em uma janela de 10 minutos; atrás de proxy, clientes podem compartilhar esse limite. Não há uma tela administrativa nem emissão de códigos pela interface.
+
+### Limite de proteção e próximos passos
+
+`GET /api/membership` consulta o acesso; `POST /api/membership/activate` valida o convite; `DELETE /api/membership` encerra a sessão; `POST /api/access` verifica recursos e metadados antes de exportar. O plano não é confiado a localStorage, arquivos de projeto ou um campo enviado pelo cliente. A assinatura de sessão é verificada no servidor, e a política de recursos é compartilhada em `plans.js`.
+
+**O desenho e a exportação ainda são executados pelo JavaScript público do navegador.** Um usuário que modificar o aplicativo pode executar esses algoritmos por conta própria, inclusive ignorando a chamada de autorização. Esta entrega aplica a divisão na experiência oficial, com sessão validada, mas não constitui proteção comercial inviolável de ferramentas locais. Antes de cobrar, será necessário autenticação individual, registro persistente de direitos e proteger no backend os ativos/serviços que serão vendidos. Os metadados enviados ao endpoint não são prova do conteúdo efetivamente renderizado no cliente.
+
+Benefícios de nuvem (100 MB/1 GB/5 GB), histórico por dias, fontes próprias, pincéis personalizados, máscaras, combinação de formas e SVG ainda não estão implementados nem são anunciados como disponíveis nas fichas dos planos. Esta versão não simula armazenamento em nuvem ou restauração de versões. A extração de paleta é local, por frequência de cores quantizadas, sem IA; imagens transparentes podem não fornecer cores. Os downloads em lote podem exigir permissão do navegador.
+
+### Verificação dos planos
+
+`npm test` inclui política cumulativa, formatos, importação de recursos premium, migração dos efeitos, ativação por código, rejeição de cookie adulterado, ausência de configuração, origem externa, limite de tentativas e autorização da exportação. A interface foi verificada no Chromium com ativação de Basic/Medium/High, persistência, bloqueios, PNGs reais Full HD e 4K, imagem, favoritos, mudança de plano e diálogo responsivo.

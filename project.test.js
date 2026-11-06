@@ -25,7 +25,7 @@ test('salvamentos antigos continuam no espaço de estilos', () => {
   assert.equal(result.projects.templates.name,'Meu título');assert.equal(result.projects.blank.texts.length,0);
 });
 test('arquivo de projeto preserva formas, imagem e efeitos', () => {
-  const project = {...blankState(),backgroundMode:'linear',gradientAngle:225,pattern:'dots',patternOpacity:24,vignette:40,frameWidth:12,frameColor:'#ff0000',shapes:[createShape('star','star',{strokeWidth:12,shadow:true,rotation:40})],image:{src:'data:image/png;base64,AAAA',name:'Imagem',fit:'contain',zoom:130,opacity:80,x:25,y:75}};
+  const project = {...blankState(),backgroundMode:'linear',gradientAngle:225,pattern:'dots',patternOpacity:24,vignette:40,frameWidth:12,frameColor:'#ff0000',shapes:[createShape('star','star',{strokeWidth:12,shadow:true,rotation:40})],image:{src:'data:image/png;base64,AAAA',name:'Imagem',fit:'contain',saturation:100,contrast:100,blend:'source-over',zoom:130,opacity:80,x:25,y:75}};
   assert.deepEqual(parseProject(serializeProject(project)),project);
 });
 test('arquivos incompatíveis e imagens externas são rejeitados antes de editar', () => {

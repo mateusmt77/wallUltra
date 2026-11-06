@@ -25,6 +25,7 @@ export const templates = [
   { id: 'minimal', name: 'Essência', tag: 'Minimalista', text: 'less is more.', palette: 11 }
 ];
 export const resolutions = [
+  { value: '7680x4320', name: '8K Ultra HD', ratio: '16:9' },
   { value: '1920x1080', name: 'Full HD', ratio: '16:9' },
   { value: '2560x1440', name: 'Quad HD', ratio: '16:9' },
   { value: '3840x2160', name: '4K Ultra HD', ratio: '16:9' },
@@ -81,7 +82,7 @@ export function createText(id, overrides = {}) {
     rotation: 0, opacity: 100, lineHeight: 1.15, outline: false, ...overrides };
 }
 export const initialState = {
-  version: 5, strokes: [], mode: 'templates', backgroundMode: 'auto', gradientAngle: 135, pattern: 'none', patternOpacity: 15,
+  version: 5, gradient3: false, strokes: [], mode: 'templates', backgroundMode: 'auto', gradientAngle: 135, pattern: 'none', patternOpacity: 15,
   vignette: 0, grainAmount: 6.5, frameWidth: 0, frameColor: '#b3ff59', shapes: [], image: null, template: 'orbit', palette: 0, accent: '#b8a0ed', background: '#24232e',
   secondary: '#766591', highlight: '#eee9f5', resolution: '1920x1080', grain: true,
   intensity: 70, name: 'Meu novo universo', exportFormat: 'png', exportQuality: 92,
@@ -111,6 +112,7 @@ export function validateState(value) {
   else if (s.mode === 'blank') s.backgroundMode = 'solid';
   if (['none', 'grid', 'dots', 'stripes'].includes(value.pattern)) s.pattern = value.pattern;
   for (const [key, min, max] of [['gradientAngle', 0, 360], ['patternOpacity', 0, 50], ['vignette', 0, 100], ['grainAmount', 0, 30], ['frameWidth', 0, 60]]) s[key] = bounded(value[key], min, max, s[key]);
+  s.gradient3 = value.gradient3 === true;
   if (color(value.frameColor)) s.frameColor = value.frameColor;
   if (Number.isInteger(value.palette) && palettes[value.palette]) s.palette = value.palette;
   const p = palettes[s.palette];
@@ -167,6 +169,8 @@ export function validateState(value) {
     const image = value.image;
     s.image = { src: image.src, name: typeof image.name === 'string' ? image.name.slice(0, 100) : 'Minha imagem',
       fit: image.fit === 'contain' ? 'contain' : 'cover', opacity: bounded(image.opacity, 0, 100, 100),
+      saturation: bounded(image.saturation, 0, 200, 100), contrast: bounded(image.contrast, 0, 200, 100),
+      blend: ['multiply', 'screen', 'overlay', 'soft-light', 'difference'].includes(image.blend) ? image.blend : 'source-over',
       zoom: bounded(image.zoom, 100, 250, 100), x: bounded(image.x, 0, 100, 50), y: bounded(image.y, 0, 100, 50) };
   }
   return s;
@@ -230,6 +234,8 @@ function drawImageLayer(ctx, image, W, H) {
   const scale = (image.fit === 'contain' ? Math.min(W / element.naturalWidth, H / element.naturalHeight) : Math.max(W / element.naturalWidth, H / element.naturalHeight)) * image.zoom / 100;
   const w = element.naturalWidth * scale, h = element.naturalHeight * scale;
   ctx.save(); ctx.globalAlpha = image.opacity / 100;
+  ctx.filter = `saturate(${image.saturation ?? 100}%) contrast(${image.contrast ?? 100}%)`;
+  ctx.globalCompositeOperation = image.blend || 'source-over';
   ctx.drawImage(element, (W - w) * image.x / 100, (H - h) * image.y / 100, w, h); ctx.restore();
 }
 export function shapePath(ctx, type, w, h) {
@@ -266,10 +272,10 @@ function drawBackdrop(ctx, state, W, H) {
   if (state.backgroundMode === 'linear') {
     const a = state.gradientAngle * Math.PI / 180, length = Math.abs(W * Math.cos(a)) + Math.abs(H * Math.sin(a));
     fill = ctx.createLinearGradient(W/2 - Math.cos(a)*length/2, H/2 - Math.sin(a)*length/2, W/2 + Math.cos(a)*length/2, H/2 + Math.sin(a)*length/2);
-    fill.addColorStop(0, state.background); fill.addColorStop(1, state.accent);
+    fill.addColorStop(0, state.background); if (state.gradient3) fill.addColorStop(.5, state.secondary); fill.addColorStop(1, state.accent);
   } else if (state.backgroundMode === 'radial') {
     fill = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.hypot(W,H)/2);
-    fill.addColorStop(0,state.accent); fill.addColorStop(1,state.background);
+    fill.addColorStop(0,state.accent); if (state.gradient3) fill.addColorStop(.5,state.secondary); fill.addColorStop(1,state.background);
   }
   ctx.fillStyle = fill; ctx.fillRect(0,0,W,H);
 }

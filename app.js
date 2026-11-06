@@ -1,3 +1,5 @@
+import { plans, featurePlans, canUse, basicShapes, basicTemplates, resolutionPlan, requiredPlan, hasPlan } from './plans.js';
+let membership = { plan: 'basic', activationAvailable: false };
 import { palettes, templates, resolutions, fonts, MAX_TEXTS, initialState, createText, blankState, createShape, shapeTypes, MAX_SHAPES, moveLayer, prepareImage, shapePath, render } from './wallpaper.js';
 import { loadWorkspaces, parseProject, serializeProject, normalizeImageFile } from './project.js';
 import { MAX_STROKES, MAX_STROKE_POINTS, MAX_DRAWING_POINTS, drawingPoint } from './drawing.js';
@@ -96,6 +98,7 @@ function draw() {
   ctx.restore();
 }
 function sync() {
+  syncPlanUI();
   if (!currentText()) selectedId = state.texts[0]?.id;
   const text = currentText();
   syncExtended();
@@ -184,7 +187,8 @@ for (const template of templates) {
   const name = document.createElement('strong'); name.textContent = template.name;
   const tag = document.createElement('span'); tag.textContent = template.tag;
   caption.append(name, tag); button.append(thumb, caption); $('templates').append(button);
-  button.addEventListener('click', () => commit({ template: template.id }));
+  if (!basicTemplates.includes(template.id)) { button.dataset.feature = 'premiumTemplates'; tag.textContent += ' · Medium'; }
+  button.addEventListener('click', () => { if (!basicTemplates.includes(template.id) && !demand('premiumTemplates')) return; commit({ template: template.id }); });
 }
 function palettePatch(index) {
   const p = palettes[index];
@@ -227,7 +231,7 @@ toolTabs.forEach((tab, index) => {
     activateTool(toolTabs[next].dataset.tool, true);
   });
 });
-$('resolution').addEventListener('change', e => commit({ resolution: e.target.value }));
+$('resolution').addEventListener('change', e => { if (!demandPlan(resolutionPlan(e.target.value))) { sync(); return; } commit({ resolution: e.target.value }); });
 $('export-format').addEventListener('change', e => commit({ exportFormat: e.target.value }));
 $('export-quality').addEventListener('input', e => liveEdit({ exportQuality: Number(e.target.value) }));
 $('export-quality').addEventListener('change', finishEdit);
@@ -277,6 +281,7 @@ function travel(undo) {
 $('undo').addEventListener('click', () => travel(true));
 $('redo').addEventListener('click', () => travel(false));
 document.addEventListener('keydown', e => {
+  if ($('plans-dialog').open) return;
   if (document.getElementById('page-editor')?.hidden) {
     // Native undo can otherwise reach the last focused, now-hidden text field.
     if ((e.ctrlKey || e.metaKey) && ['z', 'y'].includes(e.key.toLowerCase())) e.preventDefault();
@@ -371,7 +376,7 @@ canvas.addEventListener('lostpointercapture', e => {
 });
 canvas.addEventListener('pointerleave', () => { $('brush-cursor').hidden = true; });
 $('shuffle').addEventListener('click', () => {
-  const template = templates[Math.floor(Math.random() * templates.length)];
+  const template = templates.filter(t => basicTemplates.includes(t.id) || canUse(membership.plan, 'premiumTemplates'))[Math.floor(Math.random() * templates.filter(t => basicTemplates.includes(t.id) || canUse(membership.plan, 'premiumTemplates')).length)];
   const palette = Math.floor(Math.random() * palettes.length);
   commit({ template: template.id, ...palettePatch(palette), intensity: 40 + Math.floor(Math.random() * 61) });
   toast('Uma nova composição. Seus textos foram preservados.');
@@ -384,6 +389,7 @@ $('save').addEventListener('click', () => {
 });
 $('download').addEventListener('click', async () => {
   finishEdit();
+  if (!await authorizeProject()) return;
   const button = $('download'); button.disabled = true; button.setAttribute('aria-busy', 'true');
   const exportState = clone(), exportRevision = revision;
   try {
@@ -443,6 +449,7 @@ function patchShape(patch, live = false) {
 function addShape(type) {
   setBoardTool('select', false);
   finishEdit(); if (state.shapes.length >= MAX_SHAPES) return;
+  if (!basicShapes.includes(type) && !demand('advancedShapes')) return;
   const shape = createShape(crypto.randomUUID(), type, { color: state.accent });
   selectedShapeId = shape.id; selectionKind = 'shape'; showSelection = true;
   commit({ shapes: [...state.shapes, shape] }); activateTool('elements');
@@ -453,13 +460,14 @@ shapeTypes.forEach(type => {
   const symbol = document.createElement('canvas'); symbol.width = 100; symbol.height = 64; symbol.setAttribute('aria-hidden', 'true');
   const ctx = symbol.getContext('2d'); ctx.translate(50, 32); ctx.fillStyle = '#a979ed'; ctx.strokeStyle = '#a979ed'; ctx.lineWidth = 4;
   shapePath(ctx, type.id, 48, 42); if (type.id !== 'line') ctx.fill(); else ctx.stroke();
-  button.dataset.shapeName = type.name;
   const label = document.createElement('span'); label.textContent = type.name;
+  button.dataset.shapeName = type.name;
+  if (!basicShapes.includes(type.id)) { button.dataset.feature = 'advancedShapes'; button.title = type.name + ' · wallMedium'; label.textContent += ' · Medium'; }
   button.append(symbol, label); button.addEventListener('click', () => addShape(type.id)); $('shape-library').append(button);
 });
 $('shape-layer').addEventListener('change', event => { finishEdit(); setBoardTool('select', false); selectedShapeId = event.target.value; selectionKind = 'shape'; showSelection = true; sync(); });
 $('shape-center').addEventListener('click', () => patchShape({ x: 50, y: 50 }));
-$('shape-type').addEventListener('change', event => patchShape({ type: event.target.value }));
+$('shape-type').addEventListener('change', event => { if (!basicShapes.includes(event.target.value) && !demand('advancedShapes')) { sync(); return; } patchShape({ type: event.target.value }); });
 $('duplicate-shape').addEventListener('click', () => {
   finishEdit(); const source = currentShape(); if (!source || state.shapes.length >= MAX_SHAPES) return;
   const shape = { ...source, id: crypto.randomUUID(), x: Math.min(95, source.x + 4), y: Math.min(95, source.y + 4) };
@@ -717,7 +725,7 @@ $('board-draw').addEventListener('click', () => setBoardTool(lastInkTool));
 $('board-eraser').addEventListener('click', () => setBoardTool('eraser'));
 $('blank-draw').addEventListener('click', () => setBoardTool(lastInkTool));
 $('draw-shape-type').replaceChildren(...shapeTypes.map(type => new Option(type.name, type.id)));
-$('draw-shape-type').addEventListener('change', event => { brushSettings.shape.type = event.target.value; syncDrawingUI(); });
+$('draw-shape-type').addEventListener('change', event => { if (!basicShapes.includes(event.target.value) && !demand('advancedShapes')) { syncDrawingUI(); return; } brushSettings.shape.type = event.target.value; syncDrawingUI(); });
 $('draw-shape-fill').addEventListener('change', event => { brushSettings.shape.fill = event.target.checked; });
 $('draw-size').addEventListener('input', event => { currentBrush().size = Number(event.target.value); syncDrawingUI(); });
 $('draw-opacity').addEventListener('input', event => { currentBrush().opacity = Number(event.target.value); syncDrawingUI(); });
@@ -742,6 +750,7 @@ $('shape-search').addEventListener('input', event => {
   $('shape-search-empty').hidden = !!matches;
 });
 document.addEventListener('keydown', event => {
+  if ($('plans-dialog').open) return;
   if (document.getElementById('page-editor')?.hidden) return;
   if (event.key === 'Escape' && paintGesture) { event.preventDefault(); cancelPaint(); return; }
   if (event.key === 'Escape' && expandedEditor) { event.preventDefault(); toggleExpandedEditor(); return; }
@@ -758,3 +767,192 @@ for (const workspace of Object.values(workspaces)) {
 }
 sync();
 if (restored) $('save-status').textContent = 'SALVO';
+
+// Membership is obtained from an HttpOnly server session, never from a project or localStorage.
+function showPlans(message = 'Comece livre. Amplie suas possibilidades quando quiser.') {
+  $('plan-reason').textContent = message;
+  if (!$('plans-dialog').open) $('plans-dialog').showModal();
+}
+function demandPlan(required) {
+  if (hasPlan(membership.plan, required)) return true;
+  showPlans(`Este recurso faz parte do ${plans[required].name}. Seu acesso atual é ${plans[membership.plan].name}.`);
+  return false;
+}
+function demand(feature) { return demandPlan(featurePlans[feature]); }
+function syncPlanUI() {
+  $('membership-label').textContent = plans[membership.plan].name;
+  $('reset-plan').hidden = membership.plan === 'basic';
+  document.querySelectorAll('[data-plan]').forEach(card => {
+    card.classList.toggle('current-plan', card.dataset.plan === membership.plan);
+    card.setAttribute('aria-label', `${plans[card.dataset.plan].name}${card.dataset.plan === membership.plan ? ' — seu plano atual' : ''}`);
+  });
+  document.querySelectorAll('[data-feature]').forEach(element => {
+    const locked = !canUse(membership.plan, element.dataset.feature);
+    element.classList.toggle('plan-locked', locked);
+    element.setAttribute('aria-disabled', String(locked));
+    if (locked) element.title = `Disponível no ${plans[featurePlans[element.dataset.feature]].name}`;
+    else element.removeAttribute('title');
+  });
+  for (const selectId of ['resolution', 'shape-type', 'draw-shape-type']) {
+    for (const option of $(selectId).options) {
+      const required = selectId === 'resolution' ? resolutionPlan(option.value) : basicShapes.includes(option.value) ? 'basic' : 'medium';
+      option.dataset.originalLabel ||= option.textContent;
+      option.textContent = option.dataset.originalLabel + (hasPlan(membership.plan, required) ? '' : ` · ${plans[required].name}`);
+    }
+  }
+  const needed = requiredPlan(state);
+  $('plan-project-notice').textContent = hasPlan(membership.plan, needed) ? `${plans[membership.plan].name} · exportação disponível` : `Esta criação usa recursos ${plans[needed].name}. Você pode continuar editando e guardar o projeto; a exportação da imagem exige esse plano.`;
+  $('adapt-plan').hidden = hasPlan(membership.plan, needed);
+  $('gradient3').checked = !!state.gradient3;
+  for (const key of ['saturation', 'contrast']) {
+    $('image-' + key).value = state.image?.[key] ?? 100;
+    $('image-' + key + '-value').textContent = (state.image?.[key] ?? 100) + '%';
+  }
+  $('image-blend').value = state.image?.blend || 'source-over';
+}
+async function refreshMembership() {
+  try {
+    const response = await fetch('/api/membership', { cache: 'no-store' });
+    if (!response.ok) throw new Error();
+    const data = await response.json();
+    membership = { plan: plans[data.plan] ? data.plan : 'basic', activationAvailable: data.activationAvailable === true };
+    $('activation-status').textContent = membership.activationAvailable ? 'Use apenas o código fornecido pelo responsável pela plataforma.' : 'Ativação manual ainda não configurada. O wallBasic está disponível gratuitamente.';
+  } catch { membership = { plan: 'basic', activationAvailable: false }; $('activation-status').textContent = 'Não foi possível verificar o acesso. Usando wallBasic até reconectar ao servidor.'; }
+  syncPlanUI(); renderLocalLibrary();
+}
+async function accessRequest(body) {
+  const response = await fetch('/api/access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!response.ok) { await refreshMembership(); return false; }
+  return (await response.json()).allowed === true;
+}
+async function authorizeProject(project = state) {
+  if (!demandPlan(requiredPlan(project))) return false;
+  try {
+    // Only capability metadata goes to the server; images and text content remain local.
+    const metadata = { resolution: project.resolution, template: project.template, mode: project.mode, gradient3: project.gradient3,
+      shapes: project.shapes.map(x => ({ type: x.type })), texts: project.texts.map(x => ({ shadow: x.shadow, outline: x.outline })),
+      image: project.image ? { saturation: project.image.saturation, contrast: project.image.contrast, blend: project.image.blend } : null };
+    if (await accessRequest({ project: metadata })) return true;
+    showPlans('Seu acesso mudou. Verifique o plano antes de exportar esta criação.');
+  } catch { toast('Não foi possível verificar seu plano. Reconecte ao servidor e tente novamente.'); }
+  return false;
+}
+$('open-plans').addEventListener('click', () => showPlans());
+$('close-plans').addEventListener('click', () => $('plans-dialog').close());
+$('activate-plan').addEventListener('submit', async event => {
+  event.preventDefault(); $('activate-plan-button').disabled = true;
+  try {
+    const response = await fetch('/api/membership/activate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: $('plan-code').value.trim() }) });
+    const result = await response.json(); if (!response.ok) throw new Error(result.error);
+    $('plan-code').value = ''; await refreshMembership(); sync();
+    $('activation-status').textContent = `${plans[membership.plan].name} ativado por 7 dias neste navegador. Nenhuma cobrança foi feita.`;
+  } catch (error) { $('activation-status').textContent = error.message || 'Não foi possível ativar o acesso.'; }
+  finally { $('activate-plan-button').disabled = false; }
+});
+$('reset-plan').addEventListener('click', async () => {
+  try { const response = await fetch('/api/membership', { method: 'DELETE' }); if (!response.ok) throw new Error(); await refreshMembership(); sync(); toast('Acesso encerrado. Seus projetos foram preservados.'); }
+  catch { $('activation-status').textContent = 'Não foi possível encerrar o acesso. Tente novamente.'; }
+});
+// Capture before editor handlers so mouse, keyboard and range inputs share the policy.
+for (const type of ['click', 'input', 'change', 'pointerdown', 'keydown']) document.addEventListener(type, event => {
+  const element = event.target.closest('[data-feature]');
+  if (!element || canUse(membership.plan, element.dataset.feature)) return;
+  if (type === 'keydown' && ['Tab', 'Escape'].includes(event.key)) return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  if (['click', 'keydown', 'pointerdown'].includes(type)) demand(element.dataset.feature);
+  syncPlanUI();
+}, true);
+$('gradient3').addEventListener('change', event => commit({ gradient3: event.target.checked }));
+for (const key of ['saturation', 'contrast']) {
+  $('image-' + key).addEventListener('input', event => { if (!state.image) return toast('Adicione uma imagem primeiro.'); patchImage({ [key]: Number(event.target.value) }, true); });
+  $('image-' + key).addEventListener('change', finishEdit);
+}
+$('image-blend').addEventListener('change', event => { if (!state.image) { syncPlanUI(); return toast('Adicione uma imagem primeiro.'); } patchImage({ blend: event.target.value }); });
+$('extract-palette').addEventListener('click', async () => {
+  if (!state.image) return toast('Adicione uma imagem primeiro.');
+  const src = state.image.src;
+  try {
+    const image = new Image(); image.src = src; await image.decode();
+    if (src !== state.image?.src) return;
+    const sample = document.createElement('canvas'); sample.width = sample.height = 48;
+    const ctx = sample.getContext('2d'); ctx.drawImage(image, 0, 0, 48, 48);
+    const pixels = ctx.getImageData(0, 0, 48, 48).data, buckets = new Map();
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i + 3] < 128) continue;
+      const rgb = [pixels[i], pixels[i+1], pixels[i+2]].map(x => Math.min(255, Math.round(x/32)*32));
+      const hex = '#' + rgb.map(x => x.toString(16).padStart(2,'0')).join(''); buckets.set(hex, (buckets.get(hex) || 0) + 1);
+    }
+    const colors = [...buckets].sort((a,b) => b[1]-a[1]).slice(0,4).map(x => x[0]);
+    if (!colors.length) return toast('A imagem está transparente. Escolha outra imagem para extrair cores.');
+    commit({ background: colors[0], accent: colors[1] || colors[0], secondary: colors[2] || colors[0], highlight: colors[3] || '#ffffff' });
+    toast('Cores mais frequentes aplicadas à paleta da arte.');
+  } catch { toast('Não foi possível extrair as cores desta imagem.'); }
+});
+const paletteKeys = ['background', 'accent', 'secondary', 'highlight'];
+const styleKeys = [...paletteKeys, 'backgroundMode', 'gradientAngle', 'gradient3', 'pattern', 'patternOpacity', 'grain', 'grainAmount', 'frameColor', 'frameWidth', 'vignette'];
+function readLocal(key) { try { const data = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(data) ? data : []; } catch { return []; } }
+function writeLocal(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); renderLocalLibrary(); return true; } catch { toast('Armazenamento cheio ou bloqueado. Baixe seu projeto para não perder a criação.'); return false; } }
+function renderLocalLibrary() {
+  for (const [containerId, key, feature] of [['saved-palettes','wallultra-palettes','savedPalettes'], ['saved-styles','wallultra-styles','stylePresets'], ['project-shelf','wallultra-shelf',null]]) {
+    const list = $(containerId); list.replaceChildren();
+    const items = readLocal(key).slice(0,100);
+    items.forEach((item, index) => {
+      if (!item || typeof item !== 'object') return;
+      const row = document.createElement('div'), use = document.createElement('button'), remove = document.createElement('button'); row.className = 'saved-row'; use.className = remove.className = 'button';
+      use.textContent = item.name || `Item ${index+1}`; if (feature) use.dataset.feature = feature;
+      remove.textContent = '×'; remove.setAttribute('aria-label', `Excluir ${use.textContent}`);
+      use.addEventListener('click', async () => {
+        try {
+          if (feature && !demand(feature)) return;
+          if (key === 'wallultra-shelf') { const project = parseProject(JSON.stringify({ app:'wallultra', schema:5, project:item.project })); await prepareImage(project.image); switchMode(project.mode); commit(project); }
+          else { const keys = key === 'wallultra-palettes' ? paletteKeys : styleKeys; const valid = parseProject(JSON.stringify({ app:'wallultra', schema:5, project:{ ...clone(), ...item.patch } })); commit(Object.fromEntries(keys.map(k => [k,valid[k]]))); }
+        } catch { toast('Não foi possível abrir este item.'); }
+      });
+      remove.addEventListener('click', () => writeLocal(key, items.filter((_, i) => i !== index))); row.append(use,remove); list.append(row);
+    });
+  }
+  const limit = { basic:3, medium:25, high:100 }[membership.plan];
+  $('shelf-count').textContent = `${readLocal('wallultra-shelf').length} de ${limit} projetos. Os dois rascunhos do editor continuam disponíveis separadamente.`;
+  syncPlanUI();
+}
+for (const [id,key,keys,feature] of [['save-palette','wallultra-palettes',paletteKeys,'savedPalettes'], ['save-style','wallultra-styles',styleKeys,'stylePresets']]) $(id).addEventListener('click', () => {
+  if (!demand(feature)) return;
+  const items = readLocal(key); if (items.length >= 20) return toast('Limite de 20 favoritos. Exclua um item para guardar outro.');
+  writeLocal(key, [...items, { name: `${state.name || 'Minha criação'} · ${items.length+1}`, patch: Object.fromEntries(keys.map(k => [k,state[k]])) }]);
+});
+$('save-to-shelf').addEventListener('click', () => {
+  finishEdit(); const items = readLocal('wallultra-shelf'), limit = { basic:3, medium:25, high:100 }[membership.plan];
+  if (items.length >= limit) return showPlans(`Sua biblioteca atingiu ${limit} projetos. Exclua um item ou use um plano com mais espaço. Você ainda pode baixar o projeto como arquivo.`);
+  if (writeLocal('wallultra-shelf', [...items,{ name:state.name || 'Minha criação', project:clone() }])) toast('Projeto guardado na biblioteca deste navegador.');
+});
+$('batch-export').addEventListener('click', async () => {
+  if (!demand('batch')) return;
+  const button = $('batch-export'); button.disabled = true; const project = clone();
+  try {
+    if (!await authorizeProject(project) || !await accessRequest({feature:'batch'})) return;
+    await prepareImage(project.image);
+    for (const resolution of ['1920x1080','2560x1440','3840x2160']) {
+      const output = document.createElement('canvas'); [output.width, output.height] = resolution.split('x').map(Number);
+      render(output, {...project,resolution}); const blob = await new Promise(resolve => output.toBlob(resolve,'image/png'));
+      if (!blob) throw new Error(); downloadFile(blob, `wallultra-${resolution}.png`); output.width = output.height = 1;
+    }
+    toast('Três resoluções geradas. Se necessário, permita vários downloads no navegador.');
+  } catch { toast('Não foi possível gerar o pacote. Tente exportar os tamanhos individualmente.'); }
+  finally { button.disabled = false; }
+});
+window.addEventListener('focus', refreshMembership);
+refreshMembership();
+
+$('adapt-plan').addEventListener('click', () => {
+  const level = plans[membership.plan].level;
+  const patch = {};
+  if (!hasPlan(membership.plan, resolutionPlan(state.resolution))) patch.resolution = level === 0 ? '1920x1080' : '3840x2160';
+  if (level < 1) {
+    patch.template = basicTemplates.includes(state.template) ? state.template : 'orbit';
+    patch.shapes = state.shapes.map(x => basicShapes.includes(x.type) ? x : {...x,type:'rectangle'});
+    patch.texts = state.texts.map(x => ({...x,shadow:false,outline:false}));
+    patch.gradient3 = false;
+  }
+  if (state.image) patch.image = {...state.image, ...(level < 1 ? {contrast:100,saturation:100} : {}), ...(level < 2 ? {blend:'source-over'} : {})};
+  commit(patch); toast('Criação adaptada. Use Desfazer para recuperar a versão anterior.');
+});
